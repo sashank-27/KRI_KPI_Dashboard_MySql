@@ -295,7 +295,7 @@ export function MyKRADashboard({ currentUserId }: MyKRADashboardProps) {
                     </div>
 
                     {/* Progress indicator for active KRAs */}
-                    {kra.status === "active" && kra.endDate && (
+                    {/* {kra.status === "active" && kra.endDate && (
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm text-gray-600">
                           <span>Progress</span>
@@ -318,7 +318,7 @@ export function MyKRADashboard({ currentUserId }: MyKRADashboardProps) {
                           ></div>
                         </div>
                       </div>
-                    )}
+                    )} */}
                   </div>
                 </div>
               </div>

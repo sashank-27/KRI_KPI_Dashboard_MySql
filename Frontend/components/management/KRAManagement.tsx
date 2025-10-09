@@ -178,11 +178,23 @@ export function KRAManagement({ departments, users }: KRAManagementProps) {
   // Update KRA
   const handleUpdateKRA = async (updatedKRA: KRA) => {
     try {
+      // Convert responsibility areas from string to array if needed
+      const responsibilityAreas = typeof updatedKRA.responsibilityAreas === 'string'
+        ? (updatedKRA.responsibilityAreas as string).split('\n').map((s: string) => s.trim()).filter(Boolean)
+        : updatedKRA.responsibilityAreas;
+
+      const dataToSend = {
+        ...updatedKRA,
+        responsibilityAreas,
+      };
+
+      console.log('Updating KRA with data:', dataToSend);
+
       const res = await fetch(`${getApiBaseUrl()}/api/kras/${updatedKRA.id}`, {
         method: "PUT",
         headers: getAuthHeaders(),
         credentials: "include",
-        body: JSON.stringify(updatedKRA),
+        body: JSON.stringify(dataToSend),
       });
       
       if (!res.ok) {
@@ -482,10 +494,12 @@ export function KRAManagement({ departments, users }: KRAManagementProps) {
           setNewKRA={(updatedKRA) => {
             setEditingKRA({
               ...editingKRA,
-              ...updatedKRA,
-              responsibilityAreas: typeof updatedKRA.responsibilityAreas === 'string'
-                ? updatedKRA.responsibilityAreas.split('\n').map(s => s.trim()).filter(Boolean)
-                : updatedKRA.responsibilityAreas,
+              departmentId: updatedKRA.departmentId,
+              assignedToId: updatedKRA.assignedToId,
+              startDate: updatedKRA.startDate,
+              endDate: updatedKRA.endDate,
+              // Store the string version temporarily for editing
+              responsibilityAreas: updatedKRA.responsibilityAreas as unknown as string[],
             });
           }}
           departments={departments}
