@@ -17,6 +17,7 @@ import {
 import { FAQModal } from "../modals/FAQModal"
 import { api } from "@/lib/api"
 import { toast } from "sonner"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface FAQ {
   id: string
@@ -152,8 +153,38 @@ export function FAQManagement() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <Skeleton className="h-9 w-48" />
+            <Skeleton className="h-5 w-64 mt-2" />
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Skeleton className="h-10 flex-1" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        
+        <div className="grid gap-4">
+          {[...Array(6)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <Skeleton className="h-6 w-3/4 mb-2" />
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                  <div className="flex gap-2 ml-4">
+                    <Skeleton className="h-9 w-9" />
+                    <Skeleton className="h-9 w-9" />
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
       </div>
     )
   }

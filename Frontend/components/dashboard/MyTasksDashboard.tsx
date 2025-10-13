@@ -27,6 +27,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DailyTask, NewDailyTask, Department, User as UserType } from "@/lib/types";
 import { getApiBaseUrl } from "@/lib/api";
@@ -421,12 +422,86 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
   };
 
 
+  // Task skeleton loading component
+  const TaskCardSkeleton = () => (
+    <div className="bg-white rounded-xl border shadow-sm p-6">
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-5 w-3/4" />
+          <Skeleton className="h-4 w-20" />
+        </div>
+        <Skeleton className="h-6 w-16 ml-4" />
+      </div>
+      
+      <div className="space-y-2 mb-4">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-5/6" />
+      </div>
+      
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-4 rounded" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-4 rounded" />
+          <Skeleton className="h-4 w-20" />
+        </div>
+      </div>
+      
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-4 w-32" />
+        <div className="flex gap-2">
+          <Skeleton className="h-8 w-20 rounded-lg" />
+          <Skeleton className="h-8 w-8 rounded-lg" />
+        </div>
+      </div>
+    </div>
+  );
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading your daily tasks...</p>
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 p-8 text-white rounded-3xl">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-48 bg-white/20" />
+              <Skeleton className="h-4 w-96 bg-white/20" />
+            </div>
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-10 w-32 bg-white/20 rounded-2xl" />
+            </div>
+          </div>
+        </div>
+        
+        {/* Stats Cards Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-white rounded-xl border shadow-sm p-6">
+              <div className="flex items-center justify-between mb-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-4 rounded" />
+              </div>
+              <Skeleton className="h-8 w-16 mb-1" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+          ))}
+        </div>
+        
+        {/* Filters Skeleton */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Skeleton className="h-10 flex-1" />
+          <Skeleton className="h-10 w-32" />
+          <Skeleton className="h-10 w-32" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        
+        {/* Task Cards Skeleton */}
+        <div className="grid gap-6">
+          {[...Array(5)].map((_, i) => (
+            <TaskCardSkeleton key={i} />
+          ))}
         </div>
       </div>
     );

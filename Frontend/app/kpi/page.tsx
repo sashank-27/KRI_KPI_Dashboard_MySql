@@ -23,6 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -614,8 +615,39 @@ export default function KPIDashboard() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex items-center justify-center h-32">
-              <RefreshCw className="h-8 w-8 animate-spin" />
+            <div className="space-y-4">
+              {/* Table Header Skeleton */}
+              <div className="border rounded-lg p-4">
+                <div className="grid grid-cols-9 gap-4 mb-4">
+                  <Skeleton className="h-4 w-12" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-12" />
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+                
+                {/* Table Rows Skeleton */}
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="grid grid-cols-9 gap-4 py-3 border-t">
+                    <div className="space-y-1">
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-4 w-8" />
+                    <Skeleton className="h-4 w-8" />
+                    <Skeleton className="h-4 w-8" />
+                    <Skeleton className="h-4 w-8" />
+                    <Skeleton className="h-4 w-8" />
+                    <Skeleton className="h-6 w-16 rounded-full" />
+                    <Skeleton className="h-6 w-16 rounded-full" />
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (
             <Table>

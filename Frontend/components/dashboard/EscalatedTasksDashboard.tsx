@@ -38,6 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface EscalatedTasksDashboardProps {
   currentUserId: string;
@@ -222,10 +223,72 @@ export function EscalatedTasksDashboard({ currentUserId, departments, users }: E
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading escalated tasks...</p>
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="overflow-hidden rounded-3xl bg-gradient-to-r from-orange-600 via-red-600 to-pink-600 p-8">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-2">
+              <Skeleton className="h-9 w-64 bg-white/20" />
+              <Skeleton className="h-5 w-96 bg-white/20" />
+            </div>
+            <div className="flex gap-4">
+              <div className="rounded-2xl bg-white/10 p-6">
+                <Skeleton className="h-8 w-8 bg-white/20 mb-2" />
+                <Skeleton className="h-6 w-16 bg-white/20 mb-1" />
+                <Skeleton className="h-4 w-20 bg-white/20" />
+              </div>
+              <div className="rounded-2xl bg-white/10 p-6">
+                <Skeleton className="h-8 w-8 bg-white/20 mb-2" />
+                <Skeleton className="h-6 w-16 bg-white/20 mb-1" />
+                <Skeleton className="h-4 w-20 bg-white/20" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Filters Skeleton */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <Skeleton className="h-10 flex-1 max-w-sm" />
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-10 w-32" />
+          </div>
+        </div>
+
+        {/* Task Cards Skeleton */}
+        <div className="grid gap-6 md:grid-cols-2">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="rounded-xl border bg-card p-6 shadow-sm">
+              <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <Skeleton className="h-6 w-3/4 mb-2" />
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                  <Skeleton className="h-6 w-20" />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                  <div className="space-y-1">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between pt-4">
+                  <Skeleton className="h-4 w-32" />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-9 w-20" />
+                    <Skeleton className="h-9 w-20" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );

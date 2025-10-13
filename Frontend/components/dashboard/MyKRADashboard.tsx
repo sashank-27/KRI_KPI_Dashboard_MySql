@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { KRA } from "@/lib/types";
 import { getAuthHeaders, requireAuth } from "@/lib/auth";
 import { getApiBaseUrl } from "@/lib/api";
@@ -160,12 +161,77 @@ export function MyKRADashboard({ currentUserId }: MyKRADashboardProps) {
 
 
 
+  // KRA skeleton loading component
+  const KRACardSkeleton = () => (
+    <div className="bg-white rounded-xl border shadow-sm p-6">
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-6 w-3/4" />
+          <div className="space-y-1">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-5/6" />
+            <Skeleton className="h-4 w-4/6" />
+          </div>
+        </div>
+        <Skeleton className="h-6 w-20 ml-4" />
+      </div>
+      
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-4 rounded" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-4 rounded" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+      </div>
+      
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-4 rounded" />
+          <Skeleton className="h-4 w-20" />
+        </div>
+        <Skeleton className="h-8 w-24 rounded-lg" />
+      </div>
+    </div>
+  );
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading your KRAs...</p>
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-96" />
+        </div>
+        
+        {/* Stats Cards Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-white rounded-xl border shadow-sm p-6">
+              <div className="flex items-center justify-between mb-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-4 rounded" />
+              </div>
+              <Skeleton className="h-8 w-16 mb-1" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+          ))}
+        </div>
+        
+        {/* Filters Skeleton */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Skeleton className="h-10 flex-1" />
+          <Skeleton className="h-10 w-32" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        
+        {/* KRA Cards Skeleton */}
+        <div className="grid gap-6">
+          {[...Array(3)].map((_, i) => (
+            <KRACardSkeleton key={i} />
+          ))}
         </div>
       </div>
     );

@@ -32,6 +32,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DailyTask, NewDailyTask, Department, User as UserType } from "@/lib/types";
 import { getApiBaseUrl } from "@/lib/api";
@@ -1020,41 +1021,41 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
                   {isInitialLoading ? (
                     // Loading skeleton
                     Array.from({ length: itemsPerPage }).map((_, idx) => (
-                      <tr key={`skeleton-${idx}`} className="animate-pulse">
+                      <tr key={`skeleton-${idx}`}>
                         <td className="px-6 py-4 w-12">
-                          <div className="h-4 w-4 bg-gray-200 rounded"></div>
+                          <Skeleton className="h-4 w-4" />
                         </td>
                         <td className="px-6 py-4">
                           <div className="space-y-2">
-                            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                            <Skeleton className="h-4 w-3/4" />
+                            <Skeleton className="h-3 w-1/2" />
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="h-4 bg-gray-200 rounded w-16"></div>
+                          <Skeleton className="h-4 w-16" />
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center">
-                            <div className="h-8 w-8 bg-gray-200 rounded-full mr-3"></div>
+                            <Skeleton className="h-8 w-8 rounded-full mr-3" />
                             <div className="space-y-1">
-                              <div className="h-4 bg-gray-200 rounded w-20"></div>
-                              <div className="h-3 bg-gray-200 rounded w-24"></div>
+                              <Skeleton className="h-4 w-20" />
+                              <Skeleton className="h-3 w-24" />
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="h-4 bg-gray-200 rounded w-16"></div>
+                          <Skeleton className="h-4 w-16" />
                         </td>
                         <td className="px-6 py-4">
-                          <div className="h-6 bg-gray-200 rounded-full w-20"></div>
+                          <Skeleton className="h-6 w-20 rounded-full" />
                         </td>
                         <td className="px-6 py-4">
-                          <div className="h-4 bg-gray-200 rounded w-20"></div>
+                          <Skeleton className="h-4 w-20" />
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex space-x-2">
-                            <div className="h-8 w-8 bg-gray-200 rounded"></div>
-                            <div className="h-8 w-8 bg-gray-200 rounded"></div>
+                            <Skeleton className="h-8 w-8" />
+                            <Skeleton className="h-8 w-8" />
                           </div>
                         </td>
                       </tr>
@@ -1302,7 +1303,7 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
                   >
                     {isLoadingMore ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600 mr-2"></div>
+                        <RefreshCw className="animate-spin h-4 w-4 mr-2" />
                         Loading...
                       </>
                     ) : (

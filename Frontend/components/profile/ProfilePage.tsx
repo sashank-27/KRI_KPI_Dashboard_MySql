@@ -52,6 +52,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ProfilePageProps {
   currentUser: {
@@ -264,7 +265,7 @@ export function ProfilePage({
                   disabled={isUploadingImage}
                 >
                   {isUploadingImage ? (
-                    <div className="w-4 h-4 border-2 border-gray-700 border-t-transparent rounded-full animate-spin" />
+                    <Skeleton className="w-4 h-4 rounded-full" />
                   ) : (
                     <Camera className="h-4 w-4" />
                   )}
@@ -375,7 +376,7 @@ export function ProfilePage({
                         </Avatar>
                         {isUploadingImage && (
                           <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            <Skeleton className="w-4 h-4 rounded-full" />
                           </div>
                         )}
                         <div className="absolute inset-0 bg-black/0 hover:bg-black/10 rounded-full transition-colors flex items-center justify-center">

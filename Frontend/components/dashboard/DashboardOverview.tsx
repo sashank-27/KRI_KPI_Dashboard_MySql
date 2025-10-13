@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User, Department } from "@/lib/types";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface DashboardOverviewProps {
   todayUsers?: any[];
@@ -466,9 +467,28 @@ export function DashboardOverview({
               </CardHeader>
               <CardContent className="space-y-4">
                 {isLoadingSystemHealth ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                    <span className="ml-2 text-sm text-muted-foreground">Loading system status...</span>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-5 w-5 rounded-full" />
+                        <Skeleton className="h-4 w-20" />
+                      </div>
+                      <Skeleton className="h-6 w-16" />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-5 w-5 rounded-full" />
+                        <Skeleton className="h-4 w-24" />
+                      </div>
+                      <Skeleton className="h-6 w-16" />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-5 w-5 rounded-full" />
+                        <Skeleton className="h-4 w-16" />
+                      </div>
+                      <Skeleton className="h-6 w-16" />
+                    </div>
                   </div>
                 ) : systemHealth ? (
                   <>

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/accordion"
 import { api } from "@/lib/api"
 import { toast } from "sonner"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface FAQ {
   id: string
@@ -126,8 +127,34 @@ export function FAQPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      <div className="space-y-6 p-6">
+        <div className="text-center space-y-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+            <Skeleton className="w-8 h-8 rounded-full" />
+          </div>
+          <Skeleton className="h-10 w-80 mx-auto" />
+          <Skeleton className="h-6 w-96 mx-auto" />
+        </div>
+
+        <div className="max-w-2xl mx-auto space-y-4">
+          <div className="flex gap-4">
+            <Skeleton className="h-10 flex-1" />
+            <Skeleton className="h-10 w-32" />
+          </div>
+          
+          <div className="space-y-3">
+            {[...Array(6)].map((_, i) => (
+              <Card key={i}>
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-center">
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-5 w-5" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }

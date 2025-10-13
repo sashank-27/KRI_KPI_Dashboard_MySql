@@ -29,6 +29,7 @@ import { EscalatedTasksDashboard } from "@/components/dashboard/EscalatedTasksDa
 import { RealTimeTaskDashboard } from "@/components/dashboard/RealTimeTaskDashboard";
 import { FAQViewerPage } from "@/components/dashboard/FAQViewerPage";
 import { ProfilePage } from "@/components/profile/ProfilePage";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import dynamic from 'next/dynamic';
@@ -703,10 +704,25 @@ export function KRADashboard() {
                   {currentUser.id ? (
                     <MyKRADashboard currentUserId={currentUser.id} />
                   ) : (
-                    <div className="flex items-center justify-center h-64">
-                      <div className="text-center">
-                        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                        <p className="text-muted-foreground">Loading user data...</p>
+                    <div className="space-y-6">
+                      <div className="space-y-4">
+                        <Skeleton className="h-9 w-48" />
+                        <Skeleton className="h-5 w-64" />
+                      </div>
+                      
+                      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                        {[...Array(4)].map((_, i) => (
+                          <div key={i} className="rounded-xl border bg-card p-6">
+                            <div className="flex items-center justify-between space-y-0 pb-2">
+                              <Skeleton className="h-4 w-20" />
+                              <Skeleton className="h-4 w-4" />
+                            </div>
+                            <div className="space-y-1">
+                              <Skeleton className="h-8 w-12" />
+                              <Skeleton className="h-3 w-24" />
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -720,10 +736,25 @@ export function KRADashboard() {
                       users={users}
                     />
                   ) : (
-                    <div className="flex items-center justify-center h-64">
-                      <div className="text-center">
-                        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                        <p className="text-muted-foreground">Loading user data...</p>
+                    <div className="space-y-6">
+                      <div className="space-y-4">
+                        <Skeleton className="h-9 w-48" />
+                        <Skeleton className="h-5 w-64" />
+                      </div>
+                      
+                      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                        {[...Array(4)].map((_, i) => (
+                          <div key={i} className="rounded-xl border bg-card p-6">
+                            <div className="flex items-center justify-between space-y-0 pb-2">
+                              <Skeleton className="h-4 w-20" />
+                              <Skeleton className="h-4 w-4" />
+                            </div>
+                            <div className="space-y-1">
+                              <Skeleton className="h-8 w-12" />
+                              <Skeleton className="h-3 w-24" />
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -737,10 +768,25 @@ export function KRADashboard() {
                       users={users}
                     />
                   ) : (
-                    <div className="flex items-center justify-center h-64">
-                      <div className="text-center">
-                        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                        <p className="text-muted-foreground">Loading user data...</p>
+                    <div className="space-y-6">
+                      <div className="space-y-4">
+                        <Skeleton className="h-9 w-48" />
+                        <Skeleton className="h-5 w-64" />
+                      </div>
+                      
+                      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                        {[...Array(4)].map((_, i) => (
+                          <div key={i} className="rounded-xl border bg-card p-6">
+                            <div className="flex items-center justify-between space-y-0 pb-2">
+                              <Skeleton className="h-4 w-20" />
+                              <Skeleton className="h-4 w-4" />
+                            </div>
+                            <div className="space-y-1">
+                              <Skeleton className="h-8 w-12" />
+                              <Skeleton className="h-3 w-24" />
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -839,10 +885,35 @@ export function KRADashboard() {
 
                 <TabsContent value="profile" className="space-y-8 mt-0">
                   {isLoadingCurrentUser ? (
-                    <div className="flex items-center justify-center h-64">
-                      <div className="text-center">
-                        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                        <p className="text-muted-foreground">Loading profile...</p>
+                    <div className="space-y-6 p-6">
+                      <div className="space-y-4">
+                        <Skeleton className="h-9 w-48" />
+                        <Skeleton className="h-5 w-64" />
+                      </div>
+                      
+                      <div className="grid gap-6 md:grid-cols-2">
+                        <div className="space-y-4">
+                          <Skeleton className="h-32 w-32 rounded-full mx-auto" />
+                          <div className="text-center space-y-2">
+                            <Skeleton className="h-6 w-32 mx-auto" />
+                            <Skeleton className="h-4 w-24 mx-auto" />
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Skeleton className="h-4 w-16" />
+                            <Skeleton className="h-10 w-full" />
+                          </div>
+                          <div className="space-y-2">
+                            <Skeleton className="h-4 w-16" />
+                            <Skeleton className="h-10 w-full" />
+                          </div>
+                          <div className="space-y-2">
+                            <Skeleton className="h-4 w-20" />
+                            <Skeleton className="h-10 w-full" />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ) : (

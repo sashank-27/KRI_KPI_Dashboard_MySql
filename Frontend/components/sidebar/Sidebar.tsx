@@ -31,6 +31,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { User } from "@/lib/types"
 import { isAdmin } from "@/lib/auth"
@@ -190,7 +191,33 @@ export function Sidebar({
               </div>
             </div>
             <div className="flex-1 flex items-center justify-center">
-              <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <div className="space-y-4 w-full px-4">
+                {/* Logo skeleton */}
+                <div className="flex justify-center">
+                  <Skeleton className="h-16 w-32" />
+                </div>
+                
+                {/* Navigation items skeleton */}
+                <div className="space-y-2">
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 p-3">
+                      <Skeleton className="h-5 w-5" />
+                      <Skeleton className="h-4 flex-1" />
+                    </div>
+                  ))}
+                </div>
+                
+                {/* User profile skeleton */}
+                <div className="absolute bottom-4 left-4 right-4">
+                  <div className="flex items-center gap-3 p-3">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="flex-1 space-y-1">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-3 w-32" />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -212,7 +239,33 @@ export function Sidebar({
               </div>
             </div>
             <div className="flex-1 flex items-center justify-center">
-              <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <div className="space-y-4 w-full px-4">
+                {/* Logo skeleton */}
+                <div className="flex justify-center">
+                  <Skeleton className="h-16 w-32" />
+                </div>
+                
+                {/* Navigation items skeleton */}
+                <div className="space-y-2">
+                  {[...Array(6)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 p-3">
+                      <Skeleton className="h-5 w-5" />
+                      <Skeleton className="h-4 flex-1" />
+                    </div>
+                  ))}
+                </div>
+                
+                {/* User profile skeleton */}
+                <div className="absolute bottom-4 left-4 right-4">
+                  <div className="flex items-center gap-3 p-3">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="flex-1 space-y-1">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-3 w-32" />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
