@@ -1,20 +1,75 @@
 // Returns the API base URL depending on the environment (localhost or network)
 export function getApiBaseUrl() {
   if (typeof window !== 'undefined') {
-    const { hostname } = window.location;
-    // If running on localhost, use localhost backend
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return 'http://localhost:5000';
-    }
-    // Otherwise, use the network backend URL from env or fallback to current host
+    const { hostname, protocol } = window.location;
+    
+    // If environment variable is set, use it (highest priority)
     if (process.env.NEXT_PUBLIC_API_URL) {
       return process.env.NEXT_PUBLIC_API_URL;
     }
-    // Fallback: use the same host as frontend but port 5000
-    return `${window.location.protocol}//${hostname}:5000`;
+    
+    // If running on localhost or 127.0.0.1, use localhost backend
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:5000';
+    }
+    
+    // For network access, auto-detect and use the same IP with port 5000
+    // This handles cases where frontend is accessed via network IP
+    return `${protocol}//${hostname}:5000`;
   }
-  // SSR fallback
+  
+  // SSR fallback - use environment variable or default to localhost
   return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+}
+
+// Function to test if backend is reachable at a given URL
+export async function testBackendConnection(url: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${url}/api/server-status`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(3000), // 3 second timeout
+    });
+    return response.ok;
+  } catch (error) {
+    return false;
+  }
+}
+
+// Enhanced function to auto-detect the best backend URL
+export async function detectBestBackendUrl(): Promise<string> {
+  const candidates = [];
+  
+  if (typeof window !== 'undefined') {
+    const { hostname, protocol } = window.location;
+    
+    // Add environment URL if set
+    if (process.env.NEXT_PUBLIC_API_URL) {
+      candidates.push(process.env.NEXT_PUBLIC_API_URL);
+    }
+    
+    // Add localhost URLs
+    candidates.push('http://localhost:5000', 'http://127.0.0.1:5000');
+    
+    // Add network IP URL (same as frontend)
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      candidates.push(`${protocol}//${hostname}:5000`);
+    }
+  } else {
+    // SSR - only try environment or localhost
+    candidates.push(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000');
+  }
+  
+  // Test each candidate URL
+  for (const url of candidates) {
+    if (await testBackendConnection(url)) {
+      console.log(`✅ Backend detected at: ${url}`);
+      return url;
+    }
+  }
+  
+  // Fallback to default
+  console.warn('⚠️ No backend detected, using default URL');
+  return getApiBaseUrl();
 }
 
 // API client with axios-like interface

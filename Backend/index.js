@@ -8,6 +8,7 @@ const Department = require("./models/Department");
 const bcrypt = require("bcryptjs");
 const fs = require("fs");
 const path = require("path");
+const { getNetworkIPs, generateAllowedOrigins, displayNetworkInfo } = require("./utils/networkUtils");
 
 const cors = require("cors");
 
@@ -24,12 +25,12 @@ uploadDirs.forEach(dir => {
   }
 });
 
-// Allow localhost, 127.0.0.1, and network IP for frontend
-const allowedOrigins = [
-  "http://localhost:3000",
-  "http://127.0.0.1:3000",
-  "http://172.17.20.56:3000" // Add your network IP here
-];
+// Get all network IPs and create allowed origins
+const networkIPs = getNetworkIPs();
+const allowedOrigins = generateAllowedOrigins(3000);
+
+// Display network information at startup
+displayNetworkInfo();
 
 const userRoutes = require("./routes/userRoutes");
 const departmentRoutes = require("./routes/departmentRoutes");
@@ -41,7 +42,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: ["http://localhost:3000", "http://127.0.0.1:3000"],
+    origin: allowedOrigins,
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"]
@@ -178,7 +179,7 @@ io.on('connect', () => {
 });
 
 // Log server startup
-console.log('🔧 Socket.IO server configured with CORS for:', ["http://localhost:3000", "http://127.0.0.1:3000"]);
+console.log('🔧 Socket.IO server configured with CORS for:', allowedOrigins);
 
 // Make io available to routes
 app.set('io', io);
@@ -190,7 +191,19 @@ connectDB().then(async () => {
   await seedSuperAdmin();
   console.log("✅ Users seeded, starting server...");
   server.listen(5000, '0.0.0.0', () => {
-    console.log("🚀 Server started on http://0.0.0.0:5000 (accessible on your network IP)");
+    console.log("🚀 Backend server started successfully!");
+    console.log("\n📡 API Endpoints:");
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log(`   • Local:      http://localhost:5000`);
+    console.log(`   • Local (IP): http://127.0.0.1:5000`);
+    
+    networkIPs.forEach(ip => {
+      console.log(`   • Network:    http://${ip}:5000`);
+    });
+    
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log(`✅ CORS configured for ${allowedOrigins.length} origins`);
+    console.log("🔗 Frontend can connect from any detected network interface\n");
   });
 }).catch((error) => {
   console.error("❌ Failed to start server:", error);
