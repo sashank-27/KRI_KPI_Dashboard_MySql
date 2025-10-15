@@ -27,10 +27,10 @@ uploadDirs.forEach(dir => {
 
 // Get all network IPs and create allowed origins
 const networkIPs = getNetworkIPs();
-const allowedOrigins = generateAllowedOrigins(3000);
+const allowedOrigins = generateAllowedOrigins(3000); // Frontend port
 
 // Display network information at startup
-displayNetworkInfo();
+displayNetworkInfo(3000, 5000); // Frontend port, Backend port
 
 const userRoutes = require("./routes/userRoutes");
 const departmentRoutes = require("./routes/departmentRoutes");

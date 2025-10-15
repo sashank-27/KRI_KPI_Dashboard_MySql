@@ -280,12 +280,22 @@ export default function KPIDashboard() {
   }, [selectedUser, selectedYear, selectedMonth, dateFrom, dateTo, filterType]);
 
   // Set up real-time event listeners
-  useSocketEvent(socket, 'task-update', handleTaskUpdate);
-  useSocketEvent(socket, 'task-created', handleTaskCreated);
+  useSocketEvent(socket, 'task-updated', handleTaskUpdate);
+  useSocketEvent(socket, 'new-task', handleTaskCreated);
   useSocketEvent(socket, 'task-deleted', handleTaskDeleted);
   useSocketEvent(socket, 'task-escalated', handleTaskEscalated);
-  useSocketEvent(socket, 'task-rollback', handleTaskRollback);
+  useSocketEvent(socket, 'task-rolled-back', handleTaskRollback);
   useSocketEvent(socket, 'task-status-updated', handleTaskStatusUpdated);
+  
+  // Listen for stats updates to refresh data
+  useSocketEvent(socket, 'task-stats-update', () => {
+    console.log('📊 Stats update received, refreshing data...');
+    if (selectedUser === "all") {
+      fetchAllUsersKPIData();
+    } else {
+      fetchUserKPIData();
+    }
+  });
 
   const exportToCSV = () => {
     const dataToExport = selectedUser === "all" ? kpiData : [userKpiData];

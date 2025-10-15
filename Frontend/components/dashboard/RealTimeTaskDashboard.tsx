@@ -118,6 +118,7 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
     inProgress: 0,
     closed: 0,
   });
+  const [statsLoading, setStatsLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
   const [realtimeEnabled, setRealtimeEnabled] = useState(true);
   // Removed recentActivity and showActivity state (Live Activity feature removed)
@@ -336,6 +337,27 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
     });
   }, []);
 
+  // Recalculate stats when tasks change (as backup to API stats)
+  useEffect(() => {
+    if (tasks.length > 0) {
+      const localStats = {
+        total: tasks.length,
+        inProgress: tasks.filter(task => task.status === 'in-progress').length,
+        closed: tasks.filter(task => task.status === 'closed').length,
+      };
+      
+      // Only update if we don't have stats from API or if local calculation gives different results
+      setStats(prevStats => {
+        if (prevStats.total === 0 || 
+            (localStats.total !== prevStats.total && tasks.length > 0)) {
+          console.log('Updating stats from local task calculation:', localStats);
+          return localStats;
+        }
+        return prevStats;
+      });
+    }
+  }, [tasks]);
+
   const fetchTasks = async (page = 1, limit = itemsPerPage, reset = false) => {
     try {
       if (reset) {
@@ -464,6 +486,7 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
 
   const fetchStats = async () => {
     try {
+      setStatsLoading(true);
       // Check authentication status
       const authHeaders = getAuthHeaders();
       console.log('Stats - Auth headers:', authHeaders);
@@ -482,10 +505,43 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
       
       if (res.ok) {
         const data = await res.json();
-        setStats(data);
+        console.log('Raw stats data from backend:', data);
+        
+        // Map backend response to frontend state structure
+        const mappedStats = {
+          total: data.totalTasks || 0,
+          inProgress: data.pendingTasks || 0,
+          closed: data.completedTasks || 0,
+        };
+        
+        console.log('Mapped stats data:', mappedStats);
+        setStats(mappedStats);
+      } else {
+        console.error('Failed to fetch stats:', res.status, res.statusText);
+        // If API fails, try to calculate from local tasks
+        if (tasks.length > 0) {
+          const localStats = {
+            total: tasks.length,
+            inProgress: tasks.filter(task => task.status === 'in-progress').length,
+            closed: tasks.filter(task => task.status === 'closed').length,
+          };
+          console.log('Using local stats calculation:', localStats);
+          setStats(localStats);
+        }
       }
     } catch (err) {
       console.error("Failed to fetch daily task stats", err);
+      // If API fails, try to calculate from local tasks
+      if (tasks.length > 0) {
+        const localStats = {
+          total: tasks.length,
+          inProgress: tasks.filter(task => task.status === 'in-progress').length,
+          closed: tasks.filter(task => task.status === 'closed').length,
+        };
+        console.log('Using local stats calculation due to error:', localStats);
+        setStats(localStats);
+      }
+      
       if (err instanceof Error) {
         console.error("Error details:", {
           message: err.message,
@@ -497,6 +553,8 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
           console.error("Network error: Backend server might not be running on http://localhost:5000");
         }
       }
+    } finally {
+      setStatsLoading(false);
     }
   };
 
@@ -841,7 +899,9 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
                   <ClipboardList className="h-6 w-6 text-emerald-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {statsLoading ? '...' : stats.total}
+                  </p>
                   <p className="text-sm text-gray-600">Total Tasks</p>
                 </div>
               </div>
@@ -858,7 +918,9 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
                   <AlertCircle className="h-6 w-6 text-yellow-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">{stats.inProgress}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {statsLoading ? '...' : stats.inProgress}
+                  </p>
                   <p className="text-sm text-gray-600">In Progress</p>
                 </div>
               </div>
@@ -875,7 +937,9 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
                   <CheckCircle className="h-6 w-6 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-gray-900">{stats.closed}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {statsLoading ? '...' : stats.closed}
+                  </p>
                   <p className="text-sm text-gray-600">Closed</p>
                 </div>
               </div>

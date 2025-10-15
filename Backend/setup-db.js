@@ -20,8 +20,16 @@ async function setupDatabase() {
     await connection.execute(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
     console.log(`✅ Database '${dbName}' created or already exists`);
 
-    await connection.execute(`USE \`${dbName}\``);
-    console.log(`✅ Using database '${dbName}'`);
+    // Reconnect to the specific database
+    await connection.end();
+    connection = await mysql.createConnection({
+      host: process.env.DB_HOST || 'localhost',
+      port: process.env.DB_PORT || 3306,
+      user: process.env.DB_USER || 'root',
+      password: process.env.DB_PASSWORD || '',
+      database: dbName
+    });
+    console.log(`✅ Connected to database '${dbName}'`);
 
     console.log('🎉 Database setup completed successfully!');
     console.log('You can now start the application with: npm run dev');

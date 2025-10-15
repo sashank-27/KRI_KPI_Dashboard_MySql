@@ -1,25 +1,26 @@
 // Returns the API base URL depending on the environment (localhost or network)
 export function getApiBaseUrl() {
-  if (typeof window !== 'undefined') {
-    const { hostname, protocol } = window.location;
-    
-    // If environment variable is set, use it (highest priority)
-    if (process.env.NEXT_PUBLIC_API_URL) {
-      return process.env.NEXT_PUBLIC_API_URL;
-    }
-    
-    // If running on localhost or 127.0.0.1, use localhost backend
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return 'http://localhost:5000';
-    }
-    
-    // For network access, auto-detect and use the same IP with port 5000
-    // This handles cases where frontend is accessed via network IP
-    return `${protocol}//${hostname}:5000`;
+  // SSR safety check
+  if (typeof window === 'undefined') {
+    // SSR fallback - use environment variable or default to localhost
+    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
   }
   
-  // SSR fallback - use environment variable or default to localhost
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const { hostname, protocol } = window.location;
+  
+  // If environment variable is set, use it (highest priority)
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  
+  // If running on localhost or 127.0.0.1, use localhost backend
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://localhost:5000';
+  }
+  
+  // For network access, auto-detect and use the same IP with port 5000
+  // This handles cases where frontend is accessed via network IP
+  return `${protocol}//${hostname}:5000`;
 }
 
 // Function to test if backend is reachable at a given URL
@@ -76,7 +77,7 @@ export async function detectBestBackendUrl(): Promise<string> {
 export const api = {
   get: async (url: string) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const response = await fetch(`${getApiBaseUrl()}${url}`, {
         method: 'GET',
         headers: {
@@ -112,7 +113,7 @@ export const api = {
 
   post: async (url: string, data?: any) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const response = await fetch(`${getApiBaseUrl()}${url}`, {
         method: 'POST',
         headers: {
@@ -148,7 +149,7 @@ export const api = {
 
   put: async (url: string, data?: any) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const response = await fetch(`${getApiBaseUrl()}${url}`, {
         method: 'PUT',
         headers: {
@@ -184,7 +185,7 @@ export const api = {
 
   delete: async (url: string) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const response = await fetch(`${getApiBaseUrl()}${url}`, {
         method: 'DELETE',
         headers: {

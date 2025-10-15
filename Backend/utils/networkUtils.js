@@ -48,8 +48,10 @@ function generateAllowedOrigins(port = 3000) {
 
 /**
  * Display network information
+ * @param {number} frontendPort - Frontend port (default: 3000)
+ * @param {number} backendPort - Backend port (default: 5000)
  */
-function displayNetworkInfo() {
+function displayNetworkInfo(frontendPort = 3000, backendPort = 5000) {
   const networkIPs = getNetworkIPs();
   const primaryIP = getPrimaryNetworkIP();
   
@@ -63,10 +65,16 @@ function displayNetworkInfo() {
       console.log(`   ${index + 1}. ${ip}`);
     });
     
-    console.log('\n🔗 Access your application:');
-    console.log(`   • Local:   http://localhost:3000`);
+    console.log('\n🔗 Frontend should connect to:');
+    console.log(`   • Local:   http://localhost:${frontendPort}`);
     networkIPs.forEach(ip => {
-      console.log(`   • Network: http://${ip}:3000`);
+      console.log(`   • Network: http://${ip}:${frontendPort}`);
+    });
+    
+    console.log('\n🔗 Backend API running on:');
+    console.log(`   • Local:   http://localhost:${backendPort}`);
+    networkIPs.forEach(ip => {
+      console.log(`   • Network: http://${ip}:${backendPort}`);
     });
   } else {
     console.log('⚠️  No network interfaces detected');

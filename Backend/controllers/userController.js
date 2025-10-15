@@ -3,8 +3,7 @@ const Department = require("../models/Department");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { Op } = require("sequelize");
-
-const jwtSecret = process.env.JWT_SECRET || "secretkey";
+const { getJwtSecret } = require("../config/db");
 
 // System health check
 exports.getSystemHealth = async (req, res) => {
@@ -319,7 +318,7 @@ exports.login = async (req, res) => {
     
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
-      jwtSecret,
+      getJwtSecret(),
       { expiresIn: "7d" }
     );
     res.json({ token });
