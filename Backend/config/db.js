@@ -34,7 +34,7 @@ const sequelizeConfig = {
   host: dbConfig.host,
   port: dbConfig.port,
   dialect: 'mysql',
-  logging: isProduction ? false : console.log, // Enable logging in development
+  logging: false, // Disable SQL query logging
   pool: {
     max: isProduction ? 20 : 10,
     min: 0,
