@@ -36,6 +36,28 @@ export function CompleteTaskModal({ isOpen, onClose, task }: CompleteTaskModalPr
   const [solutionFile, setSolutionFile] = useState<File | null>(null)
   const [tags, setTags] = useState("")
   const [loading, setLoading] = useState(false)
+  const [hasExistingFAQ, setHasExistingFAQ] = useState(false)
+
+  // Check if task has existing FAQ when task changes
+  useState(() => {
+    if (task && task.srId) {
+      // Check if task has existing FAQ by making API call
+      const checkExistingFAQ = async () => {
+        try {
+          const response = await fetch(`${getApiBaseUrl()}/api/faqs?srId=${task.srId}`, {
+            headers: getAuthHeaders(),
+          })
+          if (response.ok) {
+            const faqs = await response.json()
+            setHasExistingFAQ(faqs.length > 0)
+          }
+        } catch (error) {
+          console.error("Error checking existing FAQ:", error)
+        }
+      }
+      checkExistingFAQ()
+    }
+  })
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -135,7 +157,15 @@ export function CompleteTaskModal({ isOpen, onClose, task }: CompleteTaskModalPr
       }
 
       const data = await response.json()
-      toast.success("Task completed and solution saved to FAQs!")
+      
+      // Check if this was an update or creation based on response message
+      const isUpdate = data.message?.includes("updated")
+      
+      if (isUpdate) {
+        toast.success("Task completed and FAQ solution updated!")
+      } else {
+        toast.success("Task completed and solution saved to FAQs!")
+      }
       
       // Reset form
       setProblem("")
@@ -171,10 +201,19 @@ export function CompleteTaskModal({ isOpen, onClose, task }: CompleteTaskModalPr
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Complete Task with Solution</DialogTitle>
+          <DialogTitle>
+            {hasExistingFAQ ? "Update Task Solution" : "Complete Task with Solution"}
+          </DialogTitle>
           <DialogDescription>
             {task?.srId && (
-              <span className="font-mono text-primary">SR-ID: {task.srId}</span>
+              <>
+                <span className="font-mono text-primary">SR-ID: {task.srId}</span>
+                {hasExistingFAQ && (
+                  <span className="block text-sm text-amber-600 mt-1">
+                    ⚠️ This task already has an FAQ solution. Submitting will update the existing FAQ with new content.
+                  </span>
+                )}
+              </>
             )}
           </DialogDescription>
         </DialogHeader>
@@ -259,7 +298,7 @@ export function CompleteTaskModal({ isOpen, onClose, task }: CompleteTaskModalPr
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Submitting..." : "Complete Task & Save Solution"}
+              {loading ? "Submitting..." : hasExistingFAQ ? "Update Solution" : "Complete Task & Save Solution"}
             </Button>
           </DialogFooter>
         </form>

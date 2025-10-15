@@ -1,6 +1,7 @@
 const DailyTask = require("../models/DailyTask");
 const User = require("../models/User");
 const Department = require("../models/Department");
+const FAQ = require("../models/FAQ");
 const { Op, fn, col, literal } = require("sequelize");
 
 // Helper function to emit real-time updates
@@ -411,12 +412,37 @@ const updateDailyTaskStatus = async (req, res) => {
       return res.status(400).json({ error: "Invalid status" });
     }
 
+    // Get the current task to check if it has an FAQ
+    const currentTask = await DailyTask.findByPk(id);
+    if (!currentTask) {
+      return res.status(404).json({ error: "Daily task not found" });
+    }
+
     // Prepare update object
     let updateData = { status };
     if (status === "closed") {
       updateData.closedAt = new Date();
     } else if (status === "in-progress") {
       updateData.closedAt = null;
+      
+      // If reopening a task, check if it has an associated FAQ and reactivate it
+      if (currentTask.status === "closed" && currentTask.srId) {
+        const existingFAQ = await FAQ.findOne({
+          where: { 
+            taskId: id,
+            srId: currentTask.srId 
+          }
+        });
+        
+        if (existingFAQ) {
+          // Reactivate the FAQ
+          await FAQ.update(
+            { isActive: true },
+            { where: { id: existingFAQ.id } }
+          );
+          console.log(`Reactivated FAQ ${existingFAQ.id} for reopened task ${id}`);
+        }
+      }
     }
 
     const [updatedCount] = await DailyTask.update(updateData, {

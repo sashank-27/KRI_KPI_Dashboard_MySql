@@ -60,6 +60,9 @@ router.get("/:id", authMiddleware, faqController.getFAQById);
 // Create FAQ when completing task (user route)
 router.post("/", authMiddleware, upload.single("solutionFile"), handleMulterError, faqController.createFAQ);
 
+// Update existing FAQ (user route)
+router.put("/:id", authMiddleware, upload.single("solutionFile"), handleMulterError, faqController.updateExistingFAQ);
+
 // Admin only routes
 router.patch("/:id/toggle", authMiddleware, adminMiddleware, faqController.toggleFAQStatus);
 

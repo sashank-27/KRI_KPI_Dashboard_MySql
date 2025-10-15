@@ -152,6 +152,19 @@ exports.createFAQ = async (req, res) => {
       return res.status(400).json({ message: "Task SR-ID mismatch" });
     }
 
+    // Check if an FAQ already exists for this task
+    const existingFAQ = await FAQ.findOne({
+      where: { 
+        taskId: taskId,
+        srId: srId 
+      }
+    });
+
+    if (existingFAQ) {
+      // Update existing FAQ instead of creating new one
+      return exports.updateExistingFAQ(req, res, existingFAQ);
+    }
+
     // Prepare solution file data
     const solutionFileData = {
       filename: file.filename,
@@ -214,6 +227,129 @@ exports.createFAQ = async (req, res) => {
     console.error("Error stack:", error.stack);
     res.status(500).json({ 
       message: "Failed to create FAQ", 
+      error: error.message,
+      details: error.toString()
+    });
+  }
+};
+
+// Update existing FAQ with new PDF (called when reopening a task that already has an FAQ)
+exports.updateExistingFAQ = async (req, res, existingFAQ = null) => {
+  try {
+    console.log("=== FAQ Update Request ===");
+    console.log("Body:", req.body);
+    console.log("File:", req.file);
+    console.log("User:", req.user);
+    
+    const { taskId, problem, srId, tags } = req.body;
+    const file = req.file;
+
+    // If existingFAQ is not provided, find it
+    if (!existingFAQ) {
+      existingFAQ = await FAQ.findOne({
+        where: { 
+          taskId: taskId,
+          srId: srId 
+        }
+      });
+    }
+
+    if (!existingFAQ) {
+      return res.status(404).json({ message: "FAQ not found" });
+    }
+
+    // Validate required fields
+    if (!taskId || !problem || !srId || !file) {
+      console.error("Validation failed:", { taskId: !!taskId, problem: !!problem, srId: !!srId, file: !!file });
+      return res.status(400).json({ 
+        message: "Task ID, problem description, SR-ID, and solution file are required",
+        missing: {
+          taskId: !taskId,
+          problem: !problem,
+          srId: !srId,
+          file: !file
+        }
+      });
+    }
+
+    // Delete old file if it exists
+    if (existingFAQ.solutionFile && existingFAQ.solutionFile.path) {
+      const oldFilePath = path.resolve(existingFAQ.solutionFile.path);
+      if (fs.existsSync(oldFilePath)) {
+        try {
+          fs.unlinkSync(oldFilePath);
+          console.log(`Deleted old PDF file: ${oldFilePath}`);
+        } catch (error) {
+          console.warn(`Failed to delete old file: ${oldFilePath}`, error);
+        }
+      }
+    }
+
+    // Prepare new solution file data
+    const solutionFileData = {
+      filename: file.filename,
+      originalName: file.originalname,
+      path: file.path,
+      mimetype: file.mimetype,
+      size: file.size,
+      uploadedAt: new Date()
+    };
+
+    // Update FAQ entry
+    await FAQ.update({
+      problem,
+      solutionFile: solutionFileData,
+      solvedById: req.user.id,
+      tags: tags ? tags.split(",").map(t => t.trim()) : [],
+      isActive: true,
+      updatedAt: new Date()
+    }, {
+      where: { id: existingFAQ.id }
+    });
+
+    // Verify task exists and update status
+    const task = await DailyTask.findByPk(taskId);
+    if (task) {
+      await DailyTask.update({
+        status: "closed",
+        closedAt: new Date()
+      }, {
+        where: { id: taskId }
+      });
+    }
+
+    // Fetch the updated FAQ with associations
+    const updatedFAQ = await FAQ.findByPk(existingFAQ.id, {
+      include: [
+        {
+          model: User,
+          as: 'solvedBy',
+          attributes: ['id', 'name', 'email']
+        },
+        {
+          model: Department,
+          as: 'department',
+          attributes: ['id', 'name']
+        },
+        {
+          model: DailyTask,
+          as: 'task',
+          attributes: ['id', 'task']
+        }
+      ]
+    });
+
+    console.log("✅ FAQ updated successfully:", updatedFAQ.id);
+    
+    res.status(200).json({
+      message: "FAQ updated and task completed successfully",
+      faq: updatedFAQ,
+    });
+  } catch (error) {
+    console.error("❌ Error updating FAQ:", error);
+    console.error("Error stack:", error.stack);
+    res.status(500).json({ 
+      message: "Failed to update FAQ", 
       error: error.message,
       details: error.toString()
     });
