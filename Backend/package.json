@@ -3,7 +3,12 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "dev": "nodemon index.js",
+    "setup": "node admin-utils.js setup",
+    "test-db": "node admin-utils.js test",
+    "create-db": "node admin-utils.js create-db",
+    "set-password": "node admin-utils.js set-password",
     "detect-ip": "node detect-network.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

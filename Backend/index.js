@@ -3,9 +3,7 @@ const http = require("http");
 const socketIo = require("socket.io");
 const { connectDB } = require("./config/db");
 const { setupAssociations } = require("./models/associations");
-const User = require("./models/User");
-const Department = require("./models/Department");
-const bcrypt = require("bcryptjs");
+const { DatabaseAdmin } = require("./admin-utils");
 const fs = require("fs");
 const path = require("path");
 const { getNetworkIPs, generateAllowedOrigins, displayNetworkInfo } = require("./utils/networkUtils");
@@ -88,54 +86,6 @@ app.get("/", (req, res) => {
   res.send("hello world");
 });
 
-async function seedSuperAdmin() {
-  try {
-    const { Op } = require("sequelize");
-    const hash = await bcrypt.hash("Sashan12k", 10);
-    
-    // Check if superadmin already exists
-    const existingSuperAdmin = await User.findOne({
-      where: {
-        [Op.or]: [
-          { email: "tyrone@netwebindia.com" },
-          { username: "tyrone" }
-        ]
-      }
-    });
-
-    if (existingSuperAdmin) {
-      console.log("Superadmin user already exists, updating...");
-      await User.update({
-        username: "tyrone",
-        name: "Tyrone Super Admin",
-        email: "tyrone@netwebindia.com",
-        password: hash,
-        role: "superadmin",
-        isSuperAdmin: true,
-        departmentId: null,
-      }, {
-        where: { id: existingSuperAdmin.id }
-      });
-    } else {
-      console.log("Creating new superadmin user...");
-      await User.create({
-        username: "tyrone",
-        name: "Tyrone Super Admin",
-        email: "tyrone@netwebindia.com",
-        password: hash,
-        role: "superadmin",
-        isSuperAdmin: true,
-        departmentId: null,
-      });
-    }
-    
-    console.log("✅ Superadmin user ensured/updated successfully");
-  } catch (error) {
-    console.error("❌ Error seeding superadmin:", error.message);
-    throw error;
-  }
-}
-
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
@@ -187,9 +137,11 @@ app.set('io', io);
 connectDB().then(async () => {
   console.log("✅ Database connected, setting up associations...");
   setupAssociations();
-  console.log("✅ Database associations configured, seeding users...");
-  await seedSuperAdmin();
-  console.log("✅ Users seeded, starting server...");
+  console.log("✅ Database associations setup completed");
+  console.log("🔧 Running complete database setup...");
+  const admin = new DatabaseAdmin();
+  await admin.setupComplete();
+  console.log("✅ Complete database setup finished, starting server...");
   server.listen(5000, '0.0.0.0', () => {
     console.log("🚀 Backend server started successfully!");
     console.log("\n📡 API Endpoints:");
