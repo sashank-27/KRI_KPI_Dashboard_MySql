@@ -74,7 +74,6 @@ export function EscalatedTasksDashboard({ currentUserId, departments, users }: E
       
       if (escalatedToMeRes.ok) {
         const escalatedToMeData = await escalatedToMeRes.json();
-        console.log("Escalated to me data:", escalatedToMeData);
         setEscalatedTasks(Array.isArray(escalatedToMeData.tasks) ? escalatedToMeData.tasks : []);
       }
       
@@ -86,7 +85,6 @@ export function EscalatedTasksDashboard({ currentUserId, departments, users }: E
       
       if (escalatedByMeRes.ok) {
         const escalatedByMeData = await escalatedByMeRes.json();
-        console.log("Escalated by me data:", escalatedByMeData);
         setEscalatedByMe(Array.isArray(escalatedByMeData.tasks) ? escalatedByMeData.tasks : []);
       }
     } catch (err) {
@@ -100,21 +98,21 @@ export function EscalatedTasksDashboard({ currentUserId, departments, users }: E
 
   // Real-time event handlers
   const handleTaskUpdate = useCallback((data: any) => {
-    console.log('Real-time task update received in EscalatedTasks:', data);
+
     
     // Refresh escalated tasks when any task is updated
     fetchEscalatedTasks();
   }, []);
 
   const handleTaskCreated = useCallback((data: any) => {
-    console.log('Real-time task created in EscalatedTasks:', data);
+
     
     // Refresh escalated tasks when a new task is created (in case it's escalated)
     fetchEscalatedTasks();
   }, []);
 
   const handleTaskDeleted = useCallback((data: any) => {
-    console.log('Real-time task deleted in EscalatedTasks:', data);
+
     
     // Remove the deleted task from local state
     setEscalatedTasks(prevTasks => prevTasks.filter(task => task.id !== data.data.id));
@@ -122,21 +120,21 @@ export function EscalatedTasksDashboard({ currentUserId, departments, users }: E
   }, []);
 
   const handleTaskEscalated = useCallback((data: any) => {
-    console.log('Real-time task escalated in EscalatedTasks:', data);
+
     
     // Refresh escalated tasks when a task is escalated
     fetchEscalatedTasks();
   }, []);
 
   const handleTaskRollback = useCallback((data: any) => {
-    console.log('Real-time task rollback in EscalatedTasks:', data);
+
     
     // Refresh escalated tasks when a task is rolled back
     fetchEscalatedTasks();
   }, []);
 
   const handleTaskStatusUpdated = useCallback((data: any) => {
-    console.log('Real-time task status updated in EscalatedTasks:', data);
+
     
     // Refresh escalated tasks when status is updated
     fetchEscalatedTasks();
@@ -214,7 +212,7 @@ export function EscalatedTasksDashboard({ currentUserId, departments, users }: E
   // Filter tasks
   const currentTasks = activeTab === "escalated-to-me" ? escalatedTasks : escalatedByMe;
   const filteredTasks = currentTasks.filter((task) => {
-    const matchesSearch = task.srId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = (task.srId?.toLowerCase() ?? "").includes(searchTerm.toLowerCase()) ||
                          task.remarks.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || task.status === statusFilter;
     
@@ -419,6 +417,11 @@ export function EscalatedTasksDashboard({ currentUserId, departments, users }: E
                           <Badge variant="outline" className="text-orange-600 border-orange-200">
                             Escalated
                           </Badge>
+                          {task.srId && (
+                            <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50">
+                              <span className="font-mono text-xs">SR-{task.srId}</span>
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-gray-600 text-sm">{task.remarks}</p>
                       </div>

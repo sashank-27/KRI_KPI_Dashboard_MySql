@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Plus, Pencil, Trash2, Search, Filter, ChevronDown, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,6 +18,7 @@ import { FAQModal } from "../modals/FAQModal"
 import { api } from "@/lib/api"
 import { toast } from "sonner"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useSocket } from "@/hooks/useSocket"
 
 interface FAQ {
   id: string
@@ -59,6 +60,7 @@ export function FAQManagement() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingFaq, setEditingFaq] = useState<FAQ | null>(null)
+  const { socket } = useSocket()
 
   useEffect(() => {
     fetchFAQs()
@@ -67,6 +69,29 @@ export function FAQManagement() {
   useEffect(() => {
     filterFAQs()
   }, [faqs, searchQuery, selectedCategory, statusFilter])
+
+  // Real-time event handler for FAQ updates
+  const handleFAQRealTimeEvent = useCallback((data: any) => {
+    // Refresh FAQ list when any FAQ event occurs
+    fetchFAQs();
+  }, []);
+
+  // Set up real-time event listeners for FAQ updates
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on('faq-created', handleFAQRealTimeEvent);
+    socket.on('faq-updated', handleFAQRealTimeEvent);
+    socket.on('faq-status-toggled', handleFAQRealTimeEvent);
+    socket.on('faq-stats-update', handleFAQRealTimeEvent);
+
+    return () => {
+      socket.off('faq-created', handleFAQRealTimeEvent);
+      socket.off('faq-updated', handleFAQRealTimeEvent);
+      socket.off('faq-status-toggled', handleFAQRealTimeEvent);
+      socket.off('faq-stats-update', handleFAQRealTimeEvent);
+    };
+  }, [socket, handleFAQRealTimeEvent]);
 
   const fetchFAQs = async () => {
     try {

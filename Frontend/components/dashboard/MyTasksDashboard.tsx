@@ -92,20 +92,16 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
 
   // Debug socket connection
   useEffect(() => {
-    console.log('Socket connection status changed:', { socket: !!socket, isConnected });
     if (socket) {
-      console.log('Socket ID:', socket.id);
       
       // Join user-specific room for escalated tasks
       const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
       if (currentUser.id) {
         socket.emit("join-user-room", currentUser.id);
-        console.log("Joined user room for:", currentUser.id);
       }
 
       // Handle escalated tasks
       socket.on("task-assigned", (data) => {
-        console.log("Task assigned to you:", data);
         if (data.type === 'task-escalated') {
           alert(`New task assigned to you: ${data.message}`);
           // Refresh the task list to show the new escalated task
@@ -135,7 +131,7 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
       
       if (!res.ok) {
         if (res.status === 401) {
-          console.log('Unauthorized access, redirecting to login');
+
           requireAuth();
           return;
         }
@@ -187,7 +183,7 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
 
   // Simplified real-time event handler
   const handleRealtimeEvent = useCallback((data: any) => {
-    console.log('Real-time event received:', data);
+
     
     // Check if the event affects current user
     const isRelevant = data.data && (
@@ -197,20 +193,17 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
     );
     
     if (isRelevant) {
-      console.log('Event is relevant to current user, refreshing tasks...');
+      
       fetchUserTasks();
       fetchEscalatedTasksCount();
     } else {
-      console.log('Event is not relevant to current user, ignoring...');
+      
     }
   }, [currentUserId]);
 
   // Set up real-time event listeners with simplified approach
   useEffect(() => {
     if (!socket) return;
-
-    console.log('Setting up real-time event listeners...');
-    
     socket.on('task-created', handleRealtimeEvent);
     socket.on('task-updated', handleRealtimeEvent);
     socket.on('task-deleted', handleRealtimeEvent);
@@ -219,7 +212,6 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
     socket.on('task-status-updated', handleRealtimeEvent);
 
     return () => {
-      console.log('Cleaning up real-time event listeners...');
       socket.off('task-created', handleRealtimeEvent);
       socket.off('task-updated', handleRealtimeEvent);
       socket.off('task-deleted', handleRealtimeEvent);
@@ -242,7 +234,7 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
         
         if (!res.ok) {
           if (res.status === 401) {
-            console.log('Unauthorized access, redirecting to login');
+
             requireAuth();
             return;
           }
@@ -281,7 +273,7 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
       
       if (!res.ok) {
         if (res.status === 401) {
-          console.log('Unauthorized access, redirecting to login');
+
           requireAuth();
           return;
         }
@@ -337,12 +329,6 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
   };
 
   const confirmEscalateTask = async () => {
-    console.log('Escalation values:', {
-      taskToEscalate: !!taskToEscalate,
-      escalatedTo: escalatedTo,
-      escalationReason: escalationReason,
-      escalationReasonTrimmed: escalationReason.trim()
-    });
     
     if (!taskToEscalate || !escalatedTo) {
       alert('Please select a user to escalate to.');
@@ -362,7 +348,7 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
       
       if (!res.ok) {
         if (res.status === 401) {
-          console.log('Unauthorized access, redirecting to login');
+
           requireAuth();
           return;
         }
@@ -387,7 +373,7 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
 
   // Filter tasks
   const filteredTasks = tasks.filter((task) => {
-    const matchesSearch = task.srId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = (task.srId?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
                          task.remarks.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || task.status === statusFilter;
     
@@ -685,6 +671,11 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
                             <Badge variant="outline" className="text-orange-600 border-orange-200">
                               <ArrowUpRight className="h-3 w-3 mr-1" />
                               Escalated
+                            </Badge>
+                          )}
+                          {task.srId && (
+                            <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50">
+                              <span className="font-mono text-xs">SR-{task.srId}</span>
                             </Badge>
                           )}
                         </div>

@@ -63,7 +63,6 @@ export async function detectBestBackendUrl(): Promise<string> {
   // Test each candidate URL
   for (const url of candidates) {
     if (await testBackendConnection(url)) {
-      console.log(`✅ Backend detected at: ${url}`);
       return url;
     }
   }

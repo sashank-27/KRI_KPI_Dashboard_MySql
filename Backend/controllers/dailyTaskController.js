@@ -8,12 +8,6 @@ const { Op, fn, col, literal } = require("sequelize");
 const emitTaskUpdate = (req, eventType, data) => {
   const io = req.app.get('io');
   if (io) {
-    console.log(`Emitting real-time event: ${eventType}`, { 
-      data: data.id || data.id, 
-      timestamp: new Date(),
-      connectedClients: io.engine.clientsCount 
-    });
-    
     // Emit specific event type to all connected clients
     io.emit(eventType, data);
     
@@ -23,10 +17,6 @@ const emitTaskUpdate = (req, eventType, data) => {
     // Emit stats update to trigger statistics refresh
     io.emit('task-stats-update');
     io.to('admin-room').emit('task-stats-update');
-    
-    console.log(`Event ${eventType} emitted successfully`);
-  } else {
-    console.log('Socket.IO not available for emitting events');
   }
 };
 
@@ -440,7 +430,6 @@ const updateDailyTaskStatus = async (req, res) => {
             { isActive: true },
             { where: { id: existingFAQ.id } }
           );
-          console.log(`Reactivated FAQ ${existingFAQ.id} for reopened task ${id}`);
         }
       }
     }
@@ -634,9 +623,6 @@ const getEscalatedTasks = async (req, res) => {
       limit: parseInt(limit),
       offset: offset
     });
-
-    // Debug logging
-    console.log("Escalated tasks data:", JSON.stringify(tasks, null, 2));
 
     res.json({
       tasks,

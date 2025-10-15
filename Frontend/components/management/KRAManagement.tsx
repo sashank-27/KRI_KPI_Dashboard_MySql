@@ -113,13 +113,6 @@ export function KRAManagement({ departments, users }: KRAManagementProps) {
 
   // Create KRA
   const handleCreateKRA = async () => {
-    console.log("=== KRA Creation Debug ===");
-    console.log("newKRA object:", newKRA);
-    console.log("Validation check:");
-    console.log("- responsibilityAreas:", !!newKRA.responsibilityAreas, newKRA.responsibilityAreas);
-    console.log("- departmentId:", !!newKRA.departmentId, newKRA.departmentId);
-    console.log("- assignedToId:", !!newKRA.assignedToId, newKRA.assignedToId);
-    console.log("- startDate:", !!newKRA.startDate, newKRA.startDate);
     
     if (
       newKRA.responsibilityAreas &&
@@ -136,7 +129,7 @@ export function KRAManagement({ departments, users }: KRAManagementProps) {
         });
         if (!res.ok) {
           if (res.status === 401) {
-            console.log('Unauthorized access, redirecting to login');
+
             requireAuth();
             return;
           }
@@ -188,8 +181,6 @@ export function KRAManagement({ departments, users }: KRAManagementProps) {
         responsibilityAreas,
       };
 
-      console.log('Updating KRA with data:', dataToSend);
-
       const res = await fetch(`${getApiBaseUrl()}/api/kras/${updatedKRA.id}`, {
         method: "PUT",
         headers: getAuthHeaders(),
@@ -199,7 +190,7 @@ export function KRAManagement({ departments, users }: KRAManagementProps) {
       
       if (!res.ok) {
         if (res.status === 401) {
-          console.log('Unauthorized access, redirecting to login');
+
           requireAuth();
           return;
         }
@@ -234,7 +225,7 @@ export function KRAManagement({ departments, users }: KRAManagementProps) {
         
         if (!res.ok) {
           if (res.status === 401) {
-            console.log('Unauthorized access, redirecting to login');
+
             requireAuth();
             return;
           }

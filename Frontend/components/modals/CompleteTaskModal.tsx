@@ -102,15 +102,6 @@ export function CompleteTaskModal({ isOpen, onClose, task }: CompleteTaskModalPr
         formData.append("tags", tags)
       }
 
-      console.log("Submitting FAQ with:", {
-        taskId: task.id,
-        srId: task.srId,
-        problemLength: problem.length,
-        fileName: solutionFile.name,
-        fileSize: solutionFile.size,
-        tags: tags
-      })
-
       const authHeaders = getAuthHeaders()
       const headers: Record<string, string> = {}
       
@@ -124,8 +115,6 @@ export function CompleteTaskModal({ isOpen, onClose, task }: CompleteTaskModalPr
         headers: headers,
         body: formData,
       })
-
-      console.log("Response status:", response.status, response.statusText)
 
       if (!response.ok) {
         const contentType = response.headers.get("content-type")

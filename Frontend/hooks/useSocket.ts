@@ -34,8 +34,6 @@ export const useSocket = () => {
     }
     isInitializing.current = true;
 
-    console.log('🔗 Initializing Socket.IO connection to:', getApiBaseUrl());
-    
     const newSocket = io(getApiBaseUrl(), {
       withCredentials: true,
       transports: ['websocket', 'polling'],
@@ -51,22 +49,19 @@ export const useSocket = () => {
     });
 
     newSocket.on('connect', () => {
-      console.log('✅ Socket.IO: Connected to server', newSocket.id);
       setIsConnected(true);
     });
 
     newSocket.on('disconnect', (reason) => {
-      console.log('❌ Socket.IO: Disconnected from server. Reason:', reason);
       setIsConnected(false);
     });
 
     newSocket.on('connect_error', (error) => {
-      console.error('💥 Socket.IO: Connection error:', error.message);
+      console.error('Socket.IO: Connection error:', error.message);
       setIsConnected(false);
     });
 
     newSocket.on('reconnect', (attemptNumber) => {
-      console.log('🔄 Socket.IO: Reconnected after', attemptNumber, 'attempts');
       setIsConnected(true);
     });
 
@@ -85,7 +80,6 @@ export const useSocket = () => {
 
     return () => {
       // Don't close the socket on component unmount, keep it global
-      console.log('🧹 Socket.IO: Component unmounting, keeping connection alive');
     };
   }, [isMounted]);
 
@@ -98,20 +92,16 @@ export const useSocketEvent = (socket: Socket | null, event: string, callback: (
 
   useEffect(() => {
     if (!socket) {
-      console.log(`⏳ Socket not available for event: ${event}`);
       return;
     }
 
     const handler = (data: any) => {
-      console.log(`📨 Socket event received: ${event}`, data);
       callbackRef.current(data);
     };
 
-    console.log(`👂 Setting up listener for event: ${event}`);
     socket.on(event, handler);
 
     return () => {
-      console.log(`🔇 Removing listener for event: ${event}`);
       socket.off(event, handler);
     };
   }, [socket, event]);

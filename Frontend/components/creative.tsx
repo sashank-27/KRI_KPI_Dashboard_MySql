@@ -83,8 +83,7 @@ export function KRADashboard() {
         throw new Error("Failed to fetch Daily Tasks");
       }
       const data = await res.json();
-      console.log("Fetched daily tasks:", data);
-  setDailyTasks(Array.isArray(data.tasks) ? data.tasks : []);
+      setDailyTasks(Array.isArray(data.tasks) ? data.tasks : []);
     } catch (err) {
       console.error("Error in fetchDailyTasks:", err);
       setDailyTasks([]);
@@ -114,7 +113,7 @@ export function KRADashboard() {
   useEffect(() => {
     // Check if user is authenticated before making API calls
     if (!isAuthenticated()) {
-      console.log('User not authenticated, redirecting to login');
+
       requireAuth();
       return;
     }
@@ -157,14 +156,13 @@ export function KRADashboard() {
       });
       if (!res.ok) {
         if (res.status === 401) {
-          console.log('Unauthorized access, redirecting to login');
+
           requireAuth();
           return;
         }
         throw new Error(`Failed to fetch current user: ${res.status} ${res.statusText}`);
       }
       const userData = await res.json();
-      console.log('Current user data from API:', userData);
       setCurrentUser(userData);
       
       // Set admin status and adjust default tab
@@ -177,7 +175,7 @@ export function KRADashboard() {
       // Fallback to JWT token data (only on client side)
       if (typeof window !== 'undefined') {
         const tokenUser = getCurrentUser();
-        console.log('JWT token user data:', tokenUser);
+
         if (tokenUser) {
           const isAdminUser = tokenUser.role === 'admin' || tokenUser.role === 'superadmin';
           setIsUserAdmin(isAdminUser);
@@ -238,7 +236,7 @@ export function KRADashboard() {
       });
       if (!res.ok) {
         if (res.status === 401) {
-          console.log('Unauthorized access, redirecting to login');
+
           requireAuth();
           return;
         }
@@ -283,15 +281,13 @@ export function KRADashboard() {
       });
       if (!res.ok) {
         if (res.status === 401) {
-          console.log('Unauthorized access, redirecting to login');
+
           requireAuth();
           return;
         }
         throw new Error(`Failed to fetch users: ${res.status} ${res.statusText}`);
       }
       const data = await res.json();
-      console.log('Fetched users:', data);
-      console.log('Current user role:', currentUser.role);
       setUsers(data);
     } catch (err) {
       console.error("Failed to fetch users", err);

@@ -14,13 +14,13 @@ export function getAuthToken(): string | null {
       const payload = JSON.parse(atob(token.split('.')[1]));
       const currentTime = Math.floor(Date.now() / 1000);
       if (payload.exp && payload.exp < currentTime) {
-        console.log('Token has expired, clearing cookie');
+
         document.cookie = 'jwtToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         return null;
       }
       return token;
     } catch (err) {
-      console.log('Invalid token format, clearing cookie');
+
       document.cookie = 'jwtToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
       return null;
     }

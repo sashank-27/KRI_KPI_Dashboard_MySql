@@ -90,7 +90,6 @@ export function DailyTaskManagement({ departments, users }: DailyTaskManagementP
 
   // Real-time event handlers
   const handleTaskUpdate = useCallback((data: any) => {
-    console.log('Real-time task update received in Management:', data);
     
     // Update the specific task in the list
     if (data.data && data.data.id) {
@@ -102,7 +101,6 @@ export function DailyTaskManagement({ departments, users }: DailyTaskManagementP
   }, []);
 
   const handleTaskCreated = useCallback((data: any) => {
-    console.log('Real-time task created in Management:', data);
     
     // Add the new task to the list
     if (data.data) {
@@ -114,7 +112,6 @@ export function DailyTaskManagement({ departments, users }: DailyTaskManagementP
   }, []);
 
   const handleTaskDeleted = useCallback((data: any) => {
-    console.log('Real-time task deleted in Management:', data);
     
     // Remove the deleted task from the list
     if (data.data && data.data.id) {
@@ -126,7 +123,6 @@ export function DailyTaskManagement({ departments, users }: DailyTaskManagementP
   }, []);
 
   const handleTaskEscalated = useCallback((data: any) => {
-    console.log('Real-time task escalated in Management:', data);
     
     // Update the escalated task in the list
     if (data.data && data.data.id) {
@@ -138,7 +134,6 @@ export function DailyTaskManagement({ departments, users }: DailyTaskManagementP
   }, []);
 
   const handleTaskRollback = useCallback((data: any) => {
-    console.log('Real-time task rollback in Management:', data);
     
     // Update the rolled back task in the list
     if (data.data && data.data.id) {
@@ -158,7 +153,6 @@ export function DailyTaskManagement({ departments, users }: DailyTaskManagementP
   
   // Listen for stats updates to refresh data
   useSocketEvent(socket, 'task-stats-update', () => {
-    console.log('📊 Stats update received, refreshing task list...');
     fetchTasks();
   });
 
@@ -185,7 +179,7 @@ export function DailyTaskManagement({ departments, users }: DailyTaskManagementP
       
       if (!res.ok) {
         if (res.status === 401) {
-          console.log('Unauthorized access, redirecting to login');
+
           requireAuth();
           return;
         }
@@ -231,7 +225,7 @@ export function DailyTaskManagement({ departments, users }: DailyTaskManagementP
         
         if (!res.ok) {
           if (res.status === 401) {
-            console.log('Unauthorized access, redirecting to login');
+
             requireAuth();
             return;
           }
@@ -277,7 +271,7 @@ export function DailyTaskManagement({ departments, users }: DailyTaskManagementP
       
       if (!res.ok) {
         if (res.status === 401) {
-          console.log('Unauthorized access, redirecting to login');
+
           requireAuth();
           return;
         }
@@ -314,7 +308,7 @@ export function DailyTaskManagement({ departments, users }: DailyTaskManagementP
         
         if (!res.ok) {
           if (res.status === 401) {
-            console.log('Unauthorized access, redirecting to login');
+
             requireAuth();
             return;
           }

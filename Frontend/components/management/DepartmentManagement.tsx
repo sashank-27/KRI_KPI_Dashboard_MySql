@@ -79,7 +79,7 @@ export function DepartmentManagement({
       .then((res) => {
         if (!res.ok) {
           if (res.status === 401) {
-            console.log('Unauthorized access, redirecting to login');
+
             requireAuth();
             return;
           }
@@ -114,7 +114,7 @@ export function DepartmentManagement({
           setNewDeptName("");
         } else {
           if (res.status === 401) {
-            console.log('Unauthorized access, redirecting to login');
+
             requireAuth();
             return;
           }
@@ -154,7 +154,7 @@ export function DepartmentManagement({
         setEditingDept(null);
       } else {
         if (res.status === 401) {
-          console.log('Unauthorized access, redirecting to login');
+
           requireAuth();
           return;
         }
@@ -191,7 +191,7 @@ export function DepartmentManagement({
           setDeptToDelete(null);
         } else {
           if (res.status === 401) {
-            console.log('Unauthorized access, redirecting to login');
+
             requireAuth();
             return;
           }

@@ -6,6 +6,22 @@ const { Op, fn, col } = require("sequelize");
 const path = require("path");
 const fs = require("fs");
 
+// Helper function to emit real-time FAQ updates
+const emitFAQUpdate = (req, eventType, data) => {
+  const io = req.app.get('io');
+  if (io) {
+    // Emit specific event type to all connected clients
+    io.emit(eventType, data);
+    
+    // Emit to admin room specifically
+    io.to('admin-room').emit(eventType, data);
+    
+    // Emit FAQ stats update to trigger statistics refresh
+    io.emit('faq-stats-update');
+    io.to('admin-room').emit('faq-stats-update');
+  }
+};
+
 // Get all FAQs (with optional filtering)
 exports.getAllFAQs = async (req, res) => {
   try {
@@ -120,17 +136,11 @@ exports.getFAQById = async (req, res) => {
 // Create new FAQ (called when completing a task with SR-ID)
 exports.createFAQ = async (req, res) => {
   try {
-    console.log("=== FAQ Creation Request ===");
-    console.log("Body:", req.body);
-    console.log("File:", req.file);
-    console.log("User:", req.user);
-    
     const { taskId, problem, srId, tags } = req.body;
     const file = req.file;
 
     // Validate required fields
     if (!taskId || !problem || !srId || !file) {
-      console.error("Validation failed:", { taskId: !!taskId, problem: !!problem, srId: !!srId, file: !!file });
       return res.status(400).json({ 
         message: "Task ID, problem description, SR-ID, and solution file are required",
         missing: {
@@ -216,19 +226,18 @@ exports.createFAQ = async (req, res) => {
       ]
     });
 
-    console.log("✅ FAQ created successfully:", populatedFAQ.id);
+    // Emit real-time update
+    emitFAQUpdate(req, 'faq-created', populatedFAQ);
     
     res.status(201).json({
       message: "FAQ created and task completed successfully",
       faq: populatedFAQ,
     });
   } catch (error) {
-    console.error("❌ Error creating FAQ:", error);
-    console.error("Error stack:", error.stack);
+    console.error("Error creating FAQ:", error);
     res.status(500).json({ 
       message: "Failed to create FAQ", 
-      error: error.message,
-      details: error.toString()
+      error: error.message
     });
   }
 };
@@ -236,11 +245,6 @@ exports.createFAQ = async (req, res) => {
 // Update existing FAQ with new PDF (called when reopening a task that already has an FAQ)
 exports.updateExistingFAQ = async (req, res, existingFAQ = null) => {
   try {
-    console.log("=== FAQ Update Request ===");
-    console.log("Body:", req.body);
-    console.log("File:", req.file);
-    console.log("User:", req.user);
-    
     const { taskId, problem, srId, tags } = req.body;
     const file = req.file;
 
@@ -260,7 +264,6 @@ exports.updateExistingFAQ = async (req, res, existingFAQ = null) => {
 
     // Validate required fields
     if (!taskId || !problem || !srId || !file) {
-      console.error("Validation failed:", { taskId: !!taskId, problem: !!problem, srId: !!srId, file: !!file });
       return res.status(400).json({ 
         message: "Task ID, problem description, SR-ID, and solution file are required",
         missing: {
@@ -278,7 +281,6 @@ exports.updateExistingFAQ = async (req, res, existingFAQ = null) => {
       if (fs.existsSync(oldFilePath)) {
         try {
           fs.unlinkSync(oldFilePath);
-          console.log(`Deleted old PDF file: ${oldFilePath}`);
         } catch (error) {
           console.warn(`Failed to delete old file: ${oldFilePath}`, error);
         }
@@ -339,19 +341,18 @@ exports.updateExistingFAQ = async (req, res, existingFAQ = null) => {
       ]
     });
 
-    console.log("✅ FAQ updated successfully:", updatedFAQ.id);
+    // Emit real-time update
+    emitFAQUpdate(req, 'faq-updated', updatedFAQ);
     
     res.status(200).json({
       message: "FAQ updated and task completed successfully",
       faq: updatedFAQ,
     });
   } catch (error) {
-    console.error("❌ Error updating FAQ:", error);
-    console.error("Error stack:", error.stack);
+    console.error("Error updating FAQ:", error);
     res.status(500).json({ 
       message: "Failed to update FAQ", 
-      error: error.message,
-      details: error.toString()
+      error: error.message
     });
   }
 };
@@ -373,6 +374,9 @@ exports.toggleFAQStatus = async (req, res) => {
 
     // Get updated FAQ
     const updatedFAQ = await FAQ.findByPk(req.params.id);
+
+    // Emit real-time update
+    emitFAQUpdate(req, 'faq-status-toggled', updatedFAQ);
 
     res.json({
       message: `FAQ ${updatedFAQ.isActive ? "activated" : "deactivated"} successfully`,

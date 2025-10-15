@@ -100,14 +100,12 @@ export default function KPIDashboard() {
 
   const fetchUsers = async () => {
     try {
-      console.log("Fetching users...");
       const res = await fetch(`${getApiBaseUrl()}/api/users`, {
         headers: getAuthHeaders(),
         credentials: "include",
       });
       if (res.ok) {
         const data = await res.json();
-        console.log("Users data received:", data);
         setUsers(Array.isArray(data) ? data : []);
       } else {
         console.error("Failed to fetch users, status:", res.status);
@@ -119,14 +117,12 @@ export default function KPIDashboard() {
 
   const fetchDepartments = async () => {
     try {
-      console.log("Fetching departments...");
       const res = await fetch(`${getApiBaseUrl()}/api/departments`, {
         headers: getAuthHeaders(),
         credentials: "include",
       });
       if (res.ok) {
         const data = await res.json();
-        console.log("Departments data received:", data);
         setDepartments(Array.isArray(data) ? data : []);
       } else {
         console.error("Failed to fetch departments, status:", res.status);
@@ -150,7 +146,6 @@ export default function KPIDashboard() {
         if (dateTo) params.append("dateTo", dateTo);
       }
 
-      console.log('Fetching KPI data with params:', params.toString());
       const res = await fetch(`${getApiBaseUrl()}/api/daily-tasks/kpi/all?${params}`, {
         headers: getAuthHeaders(),
         credentials: "include",
@@ -158,7 +153,6 @@ export default function KPIDashboard() {
       
       if (res.ok) {
         const data = await res.json();
-        console.log('KPI data received:', data);
         setKpiData(Array.isArray(data) ? data : []);
         setUserKpiData(null);
       } else {
@@ -189,7 +183,7 @@ export default function KPIDashboard() {
         if (dateTo) params.append("dateTo", dateTo);
       }
 
-      console.log('Fetching user KPI data for user:', selectedUser, 'with params:', params.toString());
+
       const res = await fetch(`${getApiBaseUrl()}/api/daily-tasks/kpi/user/${selectedUser}?${params}`, {
         headers: getAuthHeaders(),
         credentials: "include",
@@ -197,7 +191,7 @@ export default function KPIDashboard() {
       
       if (res.ok) {
         const data = await res.json();
-        console.log('User KPI data received:', data);
+
         setUserKpiData(data);
         setKpiData([]);
       } else {
@@ -214,7 +208,7 @@ export default function KPIDashboard() {
 
   // Real-time event handlers
   const handleTaskUpdate = useCallback((data: any) => {
-    console.log('Real-time task update received in KPI:', data);
+
     
     // Refresh KPI data when any task is updated
     if (selectedUser === "all") {
@@ -225,7 +219,7 @@ export default function KPIDashboard() {
   }, [selectedUser, selectedYear, selectedMonth, dateFrom, dateTo, filterType]);
 
   const handleTaskCreated = useCallback((data: any) => {
-    console.log('Real-time task created in KPI:', data);
+
     
     // Refresh KPI data when a new task is created
     if (selectedUser === "all") {
@@ -236,7 +230,7 @@ export default function KPIDashboard() {
   }, [selectedUser, selectedYear, selectedMonth, dateFrom, dateTo, filterType]);
 
   const handleTaskDeleted = useCallback((data: any) => {
-    console.log('Real-time task deleted in KPI:', data);
+
     
     // Refresh KPI data when a task is deleted
     if (selectedUser === "all") {
@@ -247,7 +241,7 @@ export default function KPIDashboard() {
   }, [selectedUser, selectedYear, selectedMonth, dateFrom, dateTo, filterType]);
 
   const handleTaskEscalated = useCallback((data: any) => {
-    console.log('Real-time task escalated in KPI:', data);
+
     
     // Refresh KPI data when a task is escalated
     if (selectedUser === "all") {
@@ -258,7 +252,7 @@ export default function KPIDashboard() {
   }, [selectedUser, selectedYear, selectedMonth, dateFrom, dateTo, filterType]);
 
   const handleTaskRollback = useCallback((data: any) => {
-    console.log('Real-time task rollback in KPI:', data);
+
     
     // Refresh KPI data when a task is rolled back
     if (selectedUser === "all") {
@@ -269,7 +263,7 @@ export default function KPIDashboard() {
   }, [selectedUser, selectedYear, selectedMonth, dateFrom, dateTo, filterType]);
 
   const handleTaskStatusUpdated = useCallback((data: any) => {
-    console.log('Real-time task status updated in KPI:', data);
+
     
     // Refresh KPI data when task status is updated
     if (selectedUser === "all") {
@@ -289,7 +283,7 @@ export default function KPIDashboard() {
   
   // Listen for stats updates to refresh data
   useSocketEvent(socket, 'task-stats-update', () => {
-    console.log('📊 Stats update received, refreshing data...');
+
     if (selectedUser === "all") {
       fetchAllUsersKPIData();
     } else {

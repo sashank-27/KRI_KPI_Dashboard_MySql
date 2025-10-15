@@ -91,7 +91,7 @@ export function UserManagement({
       
       if (!res.ok) {
         if (res.status === 401) {
-          console.log('Unauthorized access, redirecting to login');
+
           requireAuth();
           return;
         }
@@ -112,15 +112,6 @@ export function UserManagement({
 
   // Add user (POST)
   const handleAddUser = async () => {
-    console.log("=== User Creation Debug ===");
-    console.log("newUser object:", newUser);
-    console.log("Validation check:");
-    console.log("- username:", !!newUser.username, newUser.username);
-    console.log("- name:", !!newUser.name, newUser.name);
-    console.log("- email:", !!newUser.email, newUser.email);
-    console.log("- password:", !!newUser.password, newUser.password?.length > 0);
-    console.log("- departmentId:", !!newUser.departmentId, newUser.departmentId);
-    console.log("- role:", !!newUser.role, newUser.role);
     
     if (
       newUser.username &&
@@ -147,7 +138,7 @@ export function UserManagement({
         });
         if (!res.ok) {
           if (res.status === 401) {
-            console.log('Unauthorized access, redirecting to login');
+
             requireAuth();
             return;
           }
@@ -215,7 +206,7 @@ export function UserManagement({
       );
       if (!res.ok) {
         if (res.status === 401) {
-          console.log('Unauthorized access, redirecting to login');
+
           requireAuth();
           return;
         }
@@ -251,7 +242,7 @@ export function UserManagement({
         );
         if (!res.ok) {
           if (res.status === 401) {
-            console.log('Unauthorized access, redirecting to login');
+
             requireAuth();
             return;
           }

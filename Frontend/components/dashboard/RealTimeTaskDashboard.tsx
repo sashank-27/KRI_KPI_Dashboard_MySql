@@ -140,7 +140,6 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
   // Initialize socket connection
   useEffect(() => {
     if (realtimeEnabled) {
-      console.log("Initializing WebSocket connection...");
       
         const socket = io(getApiBaseUrl(), {
         withCredentials: true,
@@ -158,21 +157,17 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
       socketRef.current = socket;
 
       socket.on("connect", () => {
-        console.log("Socket connected:", socket.id);
         setIsConnected(true);
         socket.emit("join-admin-room");
-        console.log("Joined admin room");
         
         // Join user-specific room for escalated tasks
         const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
         if (currentUser.id) {
           socket.emit("join-user-room", currentUser.id);
-          console.log("Joined user room for:", currentUser.id);
         }
       });
 
       socket.on("disconnect", (reason) => {
-        console.log("Socket disconnected:", reason);
         setIsConnected(false);
       });
 
@@ -182,29 +177,25 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
         // Try to reconnect after a delay
         setTimeout(() => {
           if (socket.disconnected) {
-            console.log("Attempting to reconnect...");
             socket.connect();
           }
         }, 2000);
       });
 
       socket.on("reconnect", (attemptNumber) => {
-        console.log("Socket reconnected after", attemptNumber, "attempts");
         setIsConnected(true);
         socket.emit("join-admin-room");
       });
 
       socket.on("admin-room-joined", (data) => {
-        console.log("Admin room confirmation:", data);
+        // Admin room joined successfully
       });
 
       socket.on("new-task", (task: DailyTask) => {
-        console.log("New task received:", task);
         setTasks(prev => {
           // Check if task already exists to prevent duplicates
           const exists = prev.some(t => t.id === task.id);
           if (exists) {
-            console.log("Task already exists, skipping duplicate:", task.id);
             return prev;
           }
           return [task, ...prev];
@@ -214,7 +205,6 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
       });
 
       socket.on("task-updated", (task: DailyTask) => {
-        console.log("Task updated:", task);
         setTasks(prev => {
           const taskExists = prev.some(t => t.id === task.id);
           if (taskExists) {
@@ -230,14 +220,12 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
       });
 
       socket.on("task-deleted", (data: { id: string }) => {
-        console.log("Task deleted:", data.id);
         setTasks(prev => prev.filter(t => t.id !== data.id));
         // Live Activity: setRecentActivity removed
         setLastUpdate(new Date());
       });
 
       socket.on("task-status-updated", (task: DailyTask) => {
-        console.log("Task status updated:", task);
         setTasks(prev => {
           const taskExists = prev.some(t => t.id === task.id);
           if (taskExists) {
@@ -253,12 +241,10 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
       });
 
       socket.on("task-stats-update", () => {
-        console.log("Stats update received");
         fetchStats();
       });
 
       socket.on("task-assigned", (data) => {
-        console.log("Task assigned to you:", data);
         // Show notification for escalated tasks
         if (data.type === 'task-escalated') {
           alert(`New task assigned to you: ${data.message}`);
@@ -269,7 +255,6 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
 
       // Listen for real-time escalated task updates (for admin dashboard)
       socket.on("task-escalated", (task) => {
-        console.log("Task escalated:", task);
         setTasks(prev => {
           const taskExists = prev.some(t => t.id === task.id);
           if (taskExists) {
@@ -286,7 +271,6 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
 
 
       return () => {
-        console.log("Cleaning up socket connection");
         socket.emit("leave-admin-room");
         socket.disconnect();
         socketRef.current = null;
@@ -350,7 +334,6 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
       setStats(prevStats => {
         if (prevStats.total === 0 || 
             (localStats.total !== prevStats.total && tasks.length > 0)) {
-          console.log('Updating stats from local task calculation:', localStats);
           return localStats;
         }
         return prevStats;
@@ -368,11 +351,8 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
       
       // Check authentication status
       const authHeaders = getAuthHeaders();
-      console.log('Auth headers:', authHeaders);
-      console.log('Is authenticated:', isAuthenticated());
       
       if (!isAuthenticated()) {
-        console.log('User not authenticated, redirecting to login');
         requireAuth();
         return;
       }
@@ -405,7 +385,6 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
       
       if (!res.ok) {
         if (res.status === 401) {
-          console.log('Unauthorized access, redirecting to login');
           requireAuth();
           return;
         }
@@ -489,11 +468,8 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
       setStatsLoading(true);
       // Check authentication status
       const authHeaders = getAuthHeaders();
-      console.log('Stats - Auth headers:', authHeaders);
-      console.log('Stats - Is authenticated:', isAuthenticated());
       
       if (!isAuthenticated()) {
-        console.log('User not authenticated for stats, redirecting to login');
         requireAuth();
         return;
       }
@@ -505,7 +481,6 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
       
       if (res.ok) {
         const data = await res.json();
-        console.log('Raw stats data from backend:', data);
         
         // Map backend response to frontend state structure
         const mappedStats = {
@@ -514,7 +489,6 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
           closed: data.completedTasks || 0,
         };
         
-        console.log('Mapped stats data:', mappedStats);
         setStats(mappedStats);
       } else {
         console.error('Failed to fetch stats:', res.status, res.statusText);
@@ -525,7 +499,6 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
             inProgress: tasks.filter(task => task.status === 'in-progress').length,
             closed: tasks.filter(task => task.status === 'closed').length,
           };
-          console.log('Using local stats calculation:', localStats);
           setStats(localStats);
         }
       }
@@ -538,7 +511,6 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
           inProgress: tasks.filter(task => task.status === 'in-progress').length,
           closed: tasks.filter(task => task.status === 'closed').length,
         };
-        console.log('Using local stats calculation due to error:', localStats);
         setStats(localStats);
       }
       
@@ -571,7 +543,7 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
         
         if (!res.ok) {
           if (res.status === 401) {
-            console.log('Unauthorized access, redirecting to login');
+            
             requireAuth();
             return;
           }
@@ -616,7 +588,7 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
       
       if (!res.ok) {
         if (res.status === 401) {
-          console.log('Unauthorized access, redirecting to login');
+          
           requireAuth();
           return;
         }
@@ -674,7 +646,7 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
         
         if (!res.ok) {
           if (res.status === 401) {
-            console.log('Unauthorized access, redirecting to login');
+            
             requireAuth();
             return;
           }
@@ -713,7 +685,7 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
         
         if (!res.ok) {
           if (res.status === 401) {
-            console.log('Unauthorized access, redirecting to login');
+            
             requireAuth();
             return;
           }

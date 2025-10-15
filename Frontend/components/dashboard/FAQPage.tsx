@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Search, ChevronDown, ChevronUp, HelpCircle } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -21,6 +21,7 @@ import {
 import { api } from "@/lib/api"
 import { toast } from "sonner"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useSocket } from "@/hooks/useSocket"
 
 interface FAQ {
   id: string
@@ -46,6 +47,7 @@ export function FAQPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
+  const { socket } = useSocket()
 
   useEffect(() => {
     fetchFAQs()
@@ -55,17 +57,36 @@ export function FAQPage() {
     filterFAQs()
   }, [faqs, searchQuery, selectedCategory])
 
+  // Real-time event handler for FAQ updates
+  const handleFAQRealTimeEvent = useCallback((data: any) => {
+    // Refresh FAQ list when any FAQ event occurs
+    fetchFAQs();
+  }, []);
+
+  // Set up real-time event listeners for FAQ updates
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on('faq-created', handleFAQRealTimeEvent);
+    socket.on('faq-updated', handleFAQRealTimeEvent);
+    socket.on('faq-status-toggled', handleFAQRealTimeEvent);
+
+    return () => {
+      socket.off('faq-created', handleFAQRealTimeEvent);
+      socket.off('faq-updated', handleFAQRealTimeEvent);
+      socket.off('faq-status-toggled', handleFAQRealTimeEvent);
+    };
+  }, [socket, handleFAQRealTimeEvent]);
+
   const fetchFAQs = async () => {
     try {
       setLoading(true)
       // Use the public endpoint to get active FAQs (no authentication required)
       const response = await api.get("/faqs/public")
-      console.log("FAQ Response:", response) // Debug log
       
       // The public endpoint already returns only active FAQs
       const activeFaqs = Array.isArray(response.data) ? response.data : []
       
-      console.log("Active FAQs:", activeFaqs) // Debug log
       setFaqs(activeFaqs)
     } catch (error: any) {
       console.error("Error fetching FAQs - Full error:", error)
