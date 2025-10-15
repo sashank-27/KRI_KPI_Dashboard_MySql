@@ -925,6 +925,8 @@ export function KRADashboard() {
                 role: currentUser.role ?? "",
                 joined: currentUser.joined ?? "",
                 createdBy: currentUser.createdBy,
+                avatar: currentUser.avatar,
+                bio: currentUser.bio,
               }}
               onUpdateProfile={handleUpdateProfile}
             />

@@ -94,8 +94,9 @@ exports.getCurrentUser = async (req, res) => {
 // Update current user profile
 exports.updateCurrentUser = async (req, res) => {
   try {
-    const { username, name, email, avatar } = req.body;
-    const update = { username, name, email, avatar };
+    // Only allow bio and avatar updates for profile endpoint
+    const { bio, avatar } = req.body;
+    const update = { bio, avatar };
     
     // Remove undefined fields
     Object.keys(update).forEach(

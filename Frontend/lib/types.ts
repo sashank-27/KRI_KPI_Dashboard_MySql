@@ -9,6 +9,7 @@ export interface User {
   role: "superadmin" | "admin" | "user";
   joined?: string;
   avatar?: string;
+  bio?: string;
   createdBy?: string | { id: string; name: string; email: string };
   createdById?: string;
   isSuperAdmin?: boolean;

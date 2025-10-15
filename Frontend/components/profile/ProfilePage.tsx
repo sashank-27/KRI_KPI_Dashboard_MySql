@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { formatDate, formatRelativeTime } from "@/lib/utils";
 import {
@@ -44,13 +44,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -89,9 +82,19 @@ export function ProfilePage({
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
   const { toast } = useToast();
 
+  // Sync editedUser with currentUser when currentUser changes
+  useEffect(() => {
+    setEditedUser(currentUser);
+  }, [currentUser]);
+
   const handleSave = async () => {
     try {
-      await onUpdateProfile(editedUser);
+      // Only save bio and avatar fields
+      const updateData = {
+        bio: editedUser.bio,
+        avatar: editedUser.avatar
+      };
+      await onUpdateProfile(updateData);
       setIsEditing(false);
       setPreviewImage(null);
     } catch (err) {
@@ -100,7 +103,12 @@ export function ProfilePage({
   };
 
   const handleCancel = () => {
-    setEditedUser(currentUser);
+    // Only reset editable fields (bio and avatar) to current user values
+    setEditedUser({
+      ...editedUser,
+      bio: currentUser.bio,
+      avatar: currentUser.avatar
+    });
     setIsEditing(false);
     setPreviewImage(null);
   };
@@ -347,7 +355,7 @@ export function ProfilePage({
                   Profile Information
                 </CardTitle>
                 <CardDescription>
-                  Your personal and professional details
+                  Your personal and professional details. Only bio and profile picture can be edited.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -486,87 +494,21 @@ export function ProfilePage({
 
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name</Label>
-                  {isEditing ? (
-                    <Input
-                      id="name"
-                      value={editedUser.name}
-                      onChange={(e) =>
-                        setEditedUser({ ...editedUser, name: e.target.value })
-                      }
-                      className="rounded-xl"
-                    />
-                  ) : (
-                    <p className="text-sm font-medium">{currentUser.name || "No name set"}</p>
-                  )}
+                  <p className="text-sm font-medium">{currentUser.name || "No name set"}</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  {isEditing ? (
-                    <Input
-                      id="email"
-                      type="email"
-                      value={editedUser.email}
-                      onChange={(e) =>
-                        setEditedUser({
-                          ...editedUser,
-                          email: e.target.value,
-                        })
-                      }
-                      className="rounded-xl"
-                    />
-                  ) : (
-                    <p className="text-sm font-medium">{currentUser.email}</p>
-                  )}
+                  <p className="text-sm font-medium">{currentUser.email}</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="department">Department</Label>
-                  {isEditing ? (
-                    <Select
-                      value={editedUser.department}
-                      onValueChange={(value) =>
-                        setEditedUser({ ...editedUser, department: value })
-                      }
-                    >
-                      <SelectTrigger className="rounded-xl">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Design">Design</SelectItem>
-                        <SelectItem value="Development">
-                          Development
-                        </SelectItem>
-                        <SelectItem value="Marketing">Marketing</SelectItem>
-                        <SelectItem value="Sales">Sales</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <p className="text-sm font-medium">
-                      {currentUser.department}
-                    </p>
-                  )}
+                  <p className="text-sm font-medium">
+                    {currentUser.department}
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="role">Role</Label>
-                  {isEditing ? (
-                    <Select
-                      value={editedUser.role}
-                      onValueChange={(value) =>
-                        setEditedUser({ ...editedUser, role: value })
-                      }
-                    >
-                      <SelectTrigger className="rounded-xl">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Admin">Admin</SelectItem>
-                        <SelectItem value="Manager">Manager</SelectItem>
-                        <SelectItem value="Member">Member</SelectItem>
-                        <SelectItem value="Intern">Intern</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <p className="text-sm font-medium">{currentUser.role}</p>
-                  )}
+                  <p className="text-sm font-medium">{currentUser.role}</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="bio">Bio</Label>
