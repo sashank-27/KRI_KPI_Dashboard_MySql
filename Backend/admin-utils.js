@@ -235,12 +235,19 @@ class DatabaseAdmin {
       await this.addBioColumn();
       await this.seedSuperAdmin();
       
+      // Get superadmin credentials from environment variables for display
+      const superadminConfig = {
+        username: process.env.SUPERADMIN_USERNAME || 'admin',
+        email: process.env.SUPERADMIN_EMAIL || 'admin@company.com',
+        password: process.env.SUPERADMIN_PASSWORD || 'defaultPassword123'
+      };
+      
       console.log('═══════════════════════════════════════════════════');
       console.log('🎉 Complete database setup finished successfully!');
       console.log('🔐 You can now log in with:');
-      console.log('   Email: tyrone@netwebindia.com');
-      console.log('   Username: tyrone');  
-      console.log('   Password: netweb@123');
+      console.log(`   Email: ${superadminConfig.email}`);
+      console.log(`   Username: ${superadminConfig.username}`);  
+      console.log(`   Password: ${superadminConfig.password}`);
       console.log('═══════════════════════════════════════════════════');
       return true;
     } catch (error) {
@@ -405,25 +412,33 @@ class DatabaseAdmin {
   async seedSuperAdmin() {
     console.log('👨‍💼 Checking for superadmin user...');
     
+    // Get superadmin credentials from environment variables
+    const superadminConfig = {
+      username: process.env.SUPERADMIN_USERNAME || 'admin',
+      name: process.env.SUPERADMIN_NAME || 'System Administrator',
+      email: process.env.SUPERADMIN_EMAIL || 'admin@company.com',
+      password: process.env.SUPERADMIN_PASSWORD || 'defaultPassword123'
+    };
+    
     const connection = await this.createConnection({ database: this.dbConfig.name });
     
     const [existingUsers] = await connection.execute(
       `SELECT id FROM users WHERE email = ? OR username = ?`,
-      ['tyrone@netwebindia.com', 'tyrone']
+      [superadminConfig.email, superadminConfig.username]
     );
     
     if (existingUsers.length === 0) {
       console.log('🔐 Creating superadmin user...');
       
-      const hashedPassword = await bcrypt.hash('Tyrone!@123', 10);
+      const hashedPassword = await bcrypt.hash(superadminConfig.password, 10);
       
       await connection.execute(`
         INSERT INTO users (username, name, email, password, role, isSuperAdmin, departmentId)
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `, [
-        'tyrone',
-        'Tyrone Rodriguez',
-        'tyrone@netwebindia.com',
+        superadminConfig.username,
+        superadminConfig.name,
+        superadminConfig.email,
         hashedPassword,
         'superadmin',
         true,
