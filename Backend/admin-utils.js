@@ -415,7 +415,7 @@ class DatabaseAdmin {
     if (existingUsers.length === 0) {
       console.log('🔐 Creating superadmin user...');
       
-      const hashedPassword = await bcrypt.hash('netweb@123', 10);
+      const hashedPassword = await bcrypt.hash('Tyrone!@123', 10);
       
       await connection.execute(`
         INSERT INTO users (username, name, email, password, role, isSuperAdmin, departmentId)
