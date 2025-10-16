@@ -446,7 +446,6 @@ export function KRADashboard() {
     departmentId: "",
     assignedToId: "",
     startDate: "",
-    endDate: "",
   });
   
   // System health state

@@ -55,7 +55,6 @@ export interface NewKRA {
   departmentId: string;
   assignedToId: string;
   startDate: string;
-  endDate?: string;
 }
 
 export interface DailyTask {

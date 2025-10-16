@@ -59,14 +59,6 @@ export function KRAModal({
     if (!newKRA.startDate) {
       newErrors.startDate = "Start date is required";
     }
-    // Validate date range
-    if (newKRA.startDate && newKRA.endDate) {
-      const startDate = new Date(newKRA.startDate);
-      const endDate = new Date(newKRA.endDate);
-      if (endDate <= startDate) {
-        newErrors.endDate = "End date must be after start date";
-      }
-    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -215,53 +207,27 @@ export function KRAModal({
             </div>
           </div>
 
-          {/* Start Date and End Date */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Start Date */}
-            <div className="space-y-2">
-              <Label htmlFor="startDate" className="text-sm font-medium">
-                Start Date <span className="text-red-500">*</span>
-              </Label>
-              <div className="relative">
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={formatDateForInput(newKRA?.startDate || "")}
-                  onChange={(e) => handleInputChange("startDate", e.target.value)}
-                  className={errors.startDate ? "border-red-500" : ""}
-                />
-                <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-              </div>
-              {errors.startDate && (
-                <p className="text-sm text-red-500 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {errors.startDate}
-                </p>
-              )}
+          {/* Start Date */}
+          <div className="space-y-2">
+            <Label htmlFor="startDate" className="text-sm font-medium">
+              Start Date <span className="text-red-500">*</span>
+            </Label>
+            <div className="relative">
+              <Input
+                id="startDate"
+                type="date"
+                value={formatDateForInput(newKRA?.startDate || "")}
+                onChange={(e) => handleInputChange("startDate", e.target.value)}
+                className={errors.startDate ? "border-red-500" : ""}
+              />
+              <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
             </div>
-
-            {/* End Date */}
-            <div className="space-y-2">
-              <Label htmlFor="endDate" className="text-sm font-medium">
-                End Date
-              </Label>
-              <div className="relative">
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={formatDateForInput(newKRA?.endDate || "")}
-                  onChange={(e) => handleInputChange("endDate", e.target.value)}
-                  className={errors.endDate ? "border-red-500" : ""}
-                />
-                <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-              </div>
-              {errors.endDate && (
-                <p className="text-sm text-red-500 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {errors.endDate}
-                </p>
-              )}
-            </div>
+            {errors.startDate && (
+              <p className="text-sm text-red-500 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                {errors.startDate}
+              </p>
+            )}
           </div>
 
 

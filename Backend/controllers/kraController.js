@@ -120,7 +120,6 @@ const createKRA = async (req, res) => {
       departmentId,
       assignedToId,
       startDate,
-      endDate,
     } = req.body;
 
     // Validate required fields
@@ -151,7 +150,7 @@ const createKRA = async (req, res) => {
       departmentId,
       assignedToId,
       startDate,
-      endDate: endDate || null,
+      endDate: null, // Always set to null
       createdById: req.user.id, // Assuming user ID is available in req.user
     });
 
@@ -203,9 +202,29 @@ const updateKRA = async (req, res) => {
         .filter(area => area.trim());
     }
 
-    // Remove undefined fields
+    // Handle endDate - always set to null or remove invalid dates
+    if (updateData.endDate) {
+      // Check if endDate is valid
+      const isValidDate = (dateString) => {
+        const date = new Date(dateString);
+        return date instanceof Date && !isNaN(date.getTime()) && dateString !== 'Invalid date';
+      };
+
+      if (!isValidDate(updateData.endDate)) {
+        updateData.endDate = null;
+      }
+    } else {
+      // If endDate is not provided or is falsy, set to null
+      updateData.endDate = null;
+    }
+
+    // Remove undefined fields and invalid date strings
     Object.keys(updateData).forEach(
-      (key) => updateData[key] === undefined && delete updateData[key]
+      (key) => {
+        if (updateData[key] === undefined || updateData[key] === 'Invalid date') {
+          delete updateData[key];
+        }
+      }
     );
 
     const [updatedCount] = await KRA.update(updateData, {

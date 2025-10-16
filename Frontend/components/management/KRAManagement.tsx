@@ -60,7 +60,6 @@ export function KRAManagement({ departments, users }: KRAManagementProps) {
     departmentId: "",
     assignedToId: "",
     startDate: "",
-    endDate: "",
   });
 
   // WebSocket setup
@@ -144,7 +143,6 @@ export function KRAManagement({ departments, users }: KRAManagementProps) {
           departmentId: "",
           assignedToId: "",
           startDate: "",
-          endDate: "",
         });
       } catch (err) {
         console.error("Failed to create KRA", err);
@@ -480,7 +478,6 @@ export function KRAManagement({ departments, users }: KRAManagementProps) {
               ? editingKRA.assignedTo 
               : editingKRA.assignedTo?.id || '',
             startDate: editingKRA.startDate || '',
-            endDate: editingKRA.endDate || '',
           }}
           setNewKRA={(updatedKRA) => {
             setEditingKRA({
@@ -488,7 +485,6 @@ export function KRAManagement({ departments, users }: KRAManagementProps) {
               departmentId: updatedKRA.departmentId,
               assignedToId: updatedKRA.assignedToId,
               startDate: updatedKRA.startDate,
-              endDate: updatedKRA.endDate,
               // Store the string version temporarily for editing
               responsibilityAreas: updatedKRA.responsibilityAreas as unknown as string[],
             });
