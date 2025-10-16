@@ -5,6 +5,7 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
+    "dev:quiet": "cross-env NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS=--no-deprecation next dev",
     "lint": "next lint",
     "start": "next start"
   },
