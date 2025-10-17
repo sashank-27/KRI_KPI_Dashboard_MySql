@@ -1,3 +1,5 @@
+import { getAuthToken } from '@/lib/auth';
+
 // Returns the API base URL depending on the environment (localhost or network)
 export function getApiBaseUrl() {
   // SSR safety check
@@ -76,7 +78,7 @@ export async function detectBestBackendUrl(): Promise<string> {
 export const api = {
   get: async (url: string) => {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const token = getAuthToken();
       const response = await fetch(`${getApiBaseUrl()}${url}`, {
         method: 'GET',
         headers: {
@@ -91,7 +93,7 @@ export const api = {
         } catch {
           errorData = { message: `HTTP ${response.status}: ${response.statusText}` };
         }
-        const error: any = new Error(errorData.message || `HTTP ${response.status}`);
+        const error: any = new Error(errorData.message || errorData.error || `HTTP ${response.status}`);
         error.response = { data: errorData, status: response.status };
         throw error;
       }
@@ -112,7 +114,7 @@ export const api = {
 
   post: async (url: string, data?: any) => {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const token = getAuthToken();
       const response = await fetch(`${getApiBaseUrl()}${url}`, {
         method: 'POST',
         headers: {
@@ -128,7 +130,7 @@ export const api = {
         } catch {
           errorData = { message: `HTTP ${response.status}: ${response.statusText}` };
         }
-        const error: any = new Error(errorData.message || `HTTP ${response.status}`);
+        const error: any = new Error(errorData.message || errorData.error || `HTTP ${response.status}`);
         error.response = { data: errorData, status: response.status };
         throw error;
       }
@@ -148,7 +150,7 @@ export const api = {
 
   put: async (url: string, data?: any) => {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const token = getAuthToken();
       const response = await fetch(`${getApiBaseUrl()}${url}`, {
         method: 'PUT',
         headers: {
@@ -164,7 +166,7 @@ export const api = {
         } catch {
           errorData = { message: `HTTP ${response.status}: ${response.statusText}` };
         }
-        const error: any = new Error(errorData.message || `HTTP ${response.status}`);
+        const error: any = new Error(errorData.message || errorData.error || `HTTP ${response.status}`);
         error.response = { data: errorData, status: response.status };
         throw error;
       }
@@ -184,7 +186,7 @@ export const api = {
 
   delete: async (url: string) => {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const token = getAuthToken();
       const response = await fetch(`${getApiBaseUrl()}${url}`, {
         method: 'DELETE',
         headers: {
@@ -199,7 +201,7 @@ export const api = {
         } catch {
           errorData = { message: `HTTP ${response.status}: ${response.statusText}` };
         }
-        const error: any = new Error(errorData.message || `HTTP ${response.status}`);
+        const error: any = new Error(errorData.message || errorData.error || `HTTP ${response.status}`);
         error.response = { data: errorData, status: response.status };
         throw error;
       }
@@ -215,5 +217,13 @@ export const api = {
       }
       throw error;
     }
+  },
+
+  // Change password API function
+  changePassword: async (currentPassword: string, newPassword: string) => {
+    return api.put('/api/me/change-password', {
+      currentPassword,
+      newPassword
+    });
   },
 };

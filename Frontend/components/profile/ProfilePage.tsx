@@ -46,6 +46,7 @@ import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ChangePasswordModal } from "@/components/modals/ChangePasswordModal";
 
 interface ProfilePageProps {
   currentUser: {
@@ -80,6 +81,7 @@ export function ProfilePage({
     weekly: true,
   });
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const { toast } = useToast();
 
   // Sync editedUser with currentUser when currentUser changes
@@ -179,6 +181,18 @@ export function ProfilePage({
         } as unknown as React.ChangeEvent<HTMLInputElement>;
         handleImageUpload(event);
       }
+    }
+  };
+
+  const handleChangePassword = async (currentPassword: string, newPassword: string) => {
+    try {
+      await api.changePassword(currentPassword, newPassword);
+      toast({
+        title: "Password changed successfully",
+        description: "Your password has been updated.",
+      });
+    } catch (error: any) {
+      throw new Error(error.message || "Failed to change password");
     }
   };
 
@@ -529,12 +543,39 @@ export function ProfilePage({
                     </p>
                   )}
                 </div>
+
+                {/* Change Password Section */}
+                <div className="pt-4 border-t">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-base font-medium">Security</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Manage your account security settings
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => setChangePasswordOpen(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <Lock className="h-4 w-4" />
+                      Change Password
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </motion.div>
           {/* Quick Info */}
         </div>
       </div>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={changePasswordOpen}
+        onClose={() => setChangePasswordOpen(false)}
+        onChangePassword={handleChangePassword}
+      />
     </div>
   );
 }

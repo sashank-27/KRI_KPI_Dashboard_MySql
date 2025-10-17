@@ -129,6 +129,64 @@ exports.updateCurrentUser = async (req, res) => {
   }
 };
 
+// Change current user password
+exports.changeCurrentUserPassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    
+    // Validate required fields
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ 
+        error: "Current password and new password are required" 
+      });
+    }
+    
+    // Validate new password strength (minimum 6 characters)
+    if (newPassword.length < 6) {
+      return res.status(400).json({ 
+        error: "New password must be at least 6 characters long" 
+      });
+    }
+    
+    // Get the current user with password
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    
+    // Verify current password
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json({ error: "Current password is incorrect" });
+    }
+    
+    // Check if new password is different from current password
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    if (isSamePassword) {
+      return res.status(400).json({ 
+        error: "New password must be different from current password" 
+      });
+    }
+    
+    // Hash the new password
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+    
+    // Update the password
+    const [updatedCount] = await User.update(
+      { password: hashedNewPassword },
+      { where: { id: req.user.id } }
+    );
+    
+    if (updatedCount === 0) {
+      return res.status(500).json({ error: "Failed to update password" });
+    }
+    
+    res.status(200).json({ message: "Password changed successfully" });
+  } catch (err) {
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+};
+
 // List all users
 exports.getAllUsers = async (req, res) => {
   try {
