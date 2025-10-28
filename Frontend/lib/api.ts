@@ -10,8 +10,8 @@ export function getApiBaseUrl() {
   
   const { hostname, protocol } = window.location;
   
-  // If environment variable is set, use it (highest priority)
-  if (process.env.NEXT_PUBLIC_API_URL) {
+  // If environment variable is set to a specific value (not 'auto'), use it
+  if (process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_URL !== 'auto') {
     return process.env.NEXT_PUBLIC_API_URL;
   }
   

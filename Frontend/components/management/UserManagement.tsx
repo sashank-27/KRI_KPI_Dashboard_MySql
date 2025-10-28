@@ -8,10 +8,12 @@ import {
   ArrowUpDown,
   Edit,
   Trash2,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { User, NewUser, Department } from "@/lib/types";
 import { getApiBaseUrl } from "@/lib/api";
 import { UserModal } from "@/components/modals/UserModal";
@@ -60,6 +62,7 @@ export function UserManagement({
   onUpdateUser,
   onDeleteUser,
 }: UserManagementProps) {
+  const [searchQuery, setSearchQuery] = useState("");
   const [editUserOpen, setEditUserOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deleteUserOpen, setDeleteUserOpen] = useState(false);
@@ -259,6 +262,33 @@ export function UserManagement({
     }
   };
 
+  // Filter users based on search query
+  const filteredUsers = users.filter((user) => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    
+    // Search in user name
+    const matchesName = user.name?.toLowerCase().includes(query);
+    
+    // Search in username
+    const matchesUsername = user.username?.toLowerCase().includes(query);
+    
+    // Search in email
+    const matchesEmail = user.email?.toLowerCase().includes(query);
+    
+    // Search in role
+    const matchesRole = user.role?.toLowerCase().includes(query);
+    
+    // Search in department
+    const departmentName = typeof user.department === 'string' 
+      ? user.department 
+      : user.department?.name || '';
+    const matchesDepartment = departmentName.toLowerCase().includes(query);
+    
+    return matchesName || matchesUsername || matchesEmail || matchesRole || matchesDepartment;
+  });
+
   return (
     <>
       <section className="space-y-4 mt-10">
@@ -285,9 +315,18 @@ export function UserManagement({
           </div>
         </motion.div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <h2 className="text-2xl font-semibold">All users</h2>
-          {/* Removed Filter and Sort buttons */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Search by name, email, role, or department..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 rounded-xl"
+            />
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
@@ -304,7 +343,7 @@ export function UserManagement({
           
           {/* User List */}
           <div className="divide-y divide-gray-100">
-            {users.map((user, idx) => (
+            {filteredUsers.length > 0 ? filteredUsers.map((user, idx) => (
               <div
                 key={user.id || user.username || idx}
                 className="px-6 py-4 hover:bg-gray-50/50 transition-colors duration-200"
@@ -403,7 +442,22 @@ export function UserManagement({
                   </div>
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="px-6 py-8 text-center text-gray-500">
+                <Plus className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                {searchQuery ? (
+                  <>
+                    <p className="text-lg font-medium">No users found</p>
+                    <p className="text-sm">Try adjusting your search criteria.</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-lg font-medium">No users found</p>
+                    <p className="text-sm">Add your first user to get started.</p>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </section>

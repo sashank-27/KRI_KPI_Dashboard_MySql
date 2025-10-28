@@ -17,12 +17,16 @@ import {
   CheckCircle,
   Clock,
   XCircle,
+  Eye,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { KRA, NewKRA, Department, User as UserType } from "@/lib/types";
 import { getApiBaseUrl } from "@/lib/api";
 import { KRAModal } from "@/components/modals/KRAModal";
+import { KRAViewModal } from "@/components/modals/KRAViewModal";
 import { getAuthHeaders, requireAuth } from "@/lib/auth";
 import { useState, useEffect, useCallback } from "react";
 import { useSocket, useSocketEvent } from "@/hooks/useSocket";
@@ -50,9 +54,12 @@ interface KRAManagementProps {
 
 export function KRAManagement({ departments, users }: KRAManagementProps) {
   const [kras, setKras] = useState<KRA[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [createKRAOpen, setCreateKRAOpen] = useState(false);
   const [editKRAOpen, setEditKRAOpen] = useState(false);
   const [editingKRA, setEditingKRA] = useState<KRA | null>(null);
+  const [viewKRAOpen, setViewKRAOpen] = useState(false);
+  const [viewingKRA, setViewingKRA] = useState<KRA | null>(null);
   const [deleteKRAOpen, setDeleteKRAOpen] = useState(false);
   const [kraToDelete, setKraToDelete] = useState<KRA | null>(null);
   const [newKRA, setNewKRA] = useState<NewKRA>({
@@ -135,8 +142,29 @@ export function KRAManagement({ departments, users }: KRAManagementProps) {
           const errorData = await res.json().catch(() => ({}));
           throw new Error(errorData.error || `Failed to create KRA: ${res.status} ${res.statusText}`);
         }
-        const createdKRA = await res.json();
-        setKras([...kras, createdKRA]);
+        const responseData = await res.json();
+        
+        // Check if user already has a KRA
+        if (responseData.exists) {
+          // Close create modal and open edit modal with existing KRA
+          setCreateKRAOpen(false);
+          setNewKRA({
+            responsibilityAreas: "",
+            departmentId: "",
+            assignedToId: "",
+            startDate: "",
+          });
+          
+          // Show existing KRA in edit mode
+          setEditingKRA(responseData.kra);
+          setEditKRAOpen(true);
+          
+          // Optionally show a notification
+          alert(responseData.message);
+          return;
+        }
+        
+        setKras([...kras, responseData]);
         setCreateKRAOpen(false);
         setNewKRA({
           responsibilityAreas: "",
@@ -164,6 +192,66 @@ export function KRAManagement({ departments, users }: KRAManagementProps) {
   const handleEditKRA = (kra: KRA) => {
     setEditingKRA(kra);
     setEditKRAOpen(true);
+  };
+
+  // View KRA
+  const handleViewKRA = (kra: KRA) => {
+    setViewingKRA(kra);
+    setViewKRAOpen(true);
+  };
+
+  // Switch from view to edit mode
+  const switchToEditMode = () => {
+    if (viewingKRA) {
+      setViewKRAOpen(false);
+      setEditingKRA(viewingKRA);
+      setEditKRAOpen(true);
+      setViewingKRA(null);
+    }
+  };
+
+  // Check for existing KRA when user is selected in create mode
+  const handleUserSelect = async (userId: string) => {
+    if (!userId) return;
+
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/kras/user/${userId}`, {
+        headers: getAuthHeaders(),
+        credentials: "include",
+      });
+      
+      if (!res.ok) {
+        if (res.status === 401) {
+          requireAuth();
+          return;
+        }
+        throw new Error(`Failed to fetch user KRAs: ${res.status}`);
+      }
+      
+      const userKRAs = await res.json();
+      
+      // If user already has a KRA, close create modal and open edit modal
+      if (userKRAs && userKRAs.length > 0) {
+        const existingKRA = userKRAs[0]; // Get the first (and should be only) KRA
+        setCreateKRAOpen(false);
+        setNewKRA({
+          responsibilityAreas: "",
+          departmentId: "",
+          assignedToId: "",
+          startDate: "",
+        });
+        
+        // Open edit modal with existing KRA
+        setEditingKRA(existingKRA);
+        setEditKRAOpen(true);
+        
+        // Show notification
+        alert(`This user already has a KRA. You can edit it here.`);
+      }
+    } catch (err) {
+      console.error("Failed to check existing KRA", err);
+      // Don't block the flow if checking fails
+    }
   };
 
   // Update KRA
@@ -287,6 +375,38 @@ export function KRAManagement({ departments, users }: KRAManagementProps) {
     }
   };
 
+  // Filter KRAs based on search query
+  const filteredKRAs = kras.filter((kra) => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    
+    // Search in responsibility areas
+    const matchesResponsibility = kra.responsibilityAreas?.some(area => 
+      area.toLowerCase().includes(query)
+    );
+    
+    // Search in assigned user name
+    const assignedToName = typeof kra.assignedTo === 'string' 
+      ? kra.assignedTo 
+      : kra.assignedTo?.name || '';
+    const matchesUserName = assignedToName.toLowerCase().includes(query);
+    
+    // Search in assigned user email
+    const assignedToEmail = typeof kra.assignedTo === 'string' 
+      ? '' 
+      : kra.assignedTo?.email || '';
+    const matchesUserEmail = assignedToEmail.toLowerCase().includes(query);
+    
+    // Search in department
+    const departmentName = typeof kra.department === 'string' 
+      ? kra.department 
+      : kra.department?.name || '';
+    const matchesDepartment = departmentName.toLowerCase().includes(query);
+    
+    return matchesResponsibility || matchesUserName || matchesUserEmail || matchesDepartment;
+  });
+
   return (
     <>
       <section>
@@ -315,34 +435,42 @@ export function KRAManagement({ departments, users }: KRAManagementProps) {
       </section>
 
       <section className="space-y-4 mt-9">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <h2 className="text-2xl font-semibold">All KRAs</h2>
-          {/* Removed Filter and Sort buttons */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Search by user, email, department, or KRA..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 rounded-xl"
+            />
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-slate-50 to-gray-50 px-6 py-4 border-b">
-            <div className="grid grid-cols-11 gap-4 text-sm font-semibold text-gray-700">
-              <div className="col-span-4">Responsibility Areas</div>
+            <div className="grid grid-cols-12 gap-4 text-sm font-semibold text-gray-700">
+              <div className="col-span-5">Responsibility Areas</div>
               <div className="col-span-2">Assigned To</div>
               <div className="col-span-2">Department</div>
-              <div className="col-span-1">Status</div>
-              <div className="col-span-1">Start Date</div>
-              <div className="col-span-1">Actions</div>
+              <div className="col-span-2">Start Date</div>
+              <div className="col-span-1 text-right">Actions</div>
             </div>
           </div>
           
           {/* KRA List */}
           <div className="divide-y divide-gray-100">
-            {Array.isArray(kras) && kras.length > 0 ? kras.map((kra, idx) => (
+            {Array.isArray(filteredKRAs) && filteredKRAs.length > 0 ? filteredKRAs.map((kra, idx) => (
               <div
                 key={kra.id}
                 className="px-6 py-4 hover:bg-gray-50/50 transition-colors duration-200"
               >
-                <div className="grid grid-cols-11 gap-4 items-center">
+                <div className="grid grid-cols-12 gap-4 items-center">
                   {/* KRA Info */}
-                  <div className="col-span-4 flex items-center gap-3">
+                  <div className="col-span-5 flex items-center gap-3">
                     <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white font-bold text-lg shadow-sm">
                       <Target className="h-6 w-6" />
                     </div>
@@ -382,23 +510,8 @@ export function KRAManagement({ departments, users }: KRAManagementProps) {
                     </div>
                   </div>
                   
-
-                  
-                  {/* Status */}
-                  <div className="col-span-1">
-                    <div className="flex items-center gap-1">
-                      {getStatusIcon(kra.status)}
-                      <Badge 
-                        variant="secondary"
-                        className={`text-xs ${getStatusColor(kra.status)}`}
-                      >
-                        {kra.status}
-                      </Badge>
-                    </div>
-                  </div>
-                  
                   {/* Start Date */}
-                  <div className="col-span-1">
+                  <div className="col-span-2">
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4 text-gray-400" />
                       <span className="text-sm text-gray-600">
@@ -408,7 +521,16 @@ export function KRAManagement({ departments, users }: KRAManagementProps) {
                   </div>
                   
                   {/* Actions */}
-                  <div className="col-span-1 flex items-center justify-end">
+                  <div className="col-span-1 flex items-center justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleViewKRA(kra)}
+                      className="h-8 w-8 rounded-full hover:bg-purple-50"
+                      title="View KRA"
+                    >
+                      <Eye className="h-4 w-4 text-purple-600" />
+                    </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
@@ -442,8 +564,17 @@ export function KRAManagement({ departments, users }: KRAManagementProps) {
             )) : (
               <div className="px-6 py-8 text-center text-gray-500">
                 <Target className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p className="text-lg font-medium">No KRAs found</p>
-                <p className="text-sm">Create your first KRA to get started.</p>
+                {searchQuery ? (
+                  <>
+                    <p className="text-lg font-medium">No KRAs found</p>
+                    <p className="text-sm">Try adjusting your search criteria.</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-lg font-medium">No KRAs found</p>
+                    <p className="text-sm">Create your first KRA to get started.</p>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -458,6 +589,17 @@ export function KRAManagement({ departments, users }: KRAManagementProps) {
           departments={departments}
           users={users}
           onCreateKRA={handleCreateKRA}
+          onUserSelect={handleUserSelect}
+      />
+
+      <KRAViewModal
+        isOpen={viewKRAOpen}
+        onClose={() => {
+          setViewKRAOpen(false);
+          setViewingKRA(null);
+        }}
+        kra={viewingKRA}
+        onEdit={switchToEditMode}
       />
 
       {editingKRA && (

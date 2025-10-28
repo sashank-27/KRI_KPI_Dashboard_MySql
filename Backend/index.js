@@ -27,6 +27,14 @@ uploadDirs.forEach(dir => {
 const networkIPs = getNetworkIPs();
 const allowedOrigins = generateAllowedOrigins(3000); // Frontend port
 
+console.log('\n🔐 CORS Configuration:');
+console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+console.log('✅ Allowed Origins:');
+allowedOrigins.forEach((origin, index) => {
+  console.log(`   ${index + 1}. ${origin}`);
+});
+console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
 // Display network information at startup
 displayNetworkInfo(3000, 5000); // Frontend port, Backend port
 
@@ -55,15 +63,40 @@ app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
+    
+    // Check if origin is in allowed list
     if (allowedOrigins.indexOf(origin) !== -1) {
       return callback(null, true);
-    } else {
-      return callback(new Error('Not allowed by CORS: ' + origin));
     }
+    
+    // Allow any localhost/127.0.0.1 origin on any port
+    if (origin.match(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/)) {
+      return callback(null, true);
+    }
+    
+    // Allow any 172.17.x.x or 172.31.x.x IP (common private network ranges)
+    if (origin.match(/^https?:\/\/(172\.(1[6-9]|2[0-9]|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$/)) {
+      return callback(null, true);
+    }
+    
+    // Allow any 192.168.x.x IP (common private network range)
+    if (origin.match(/^https?:\/\/(192\.168\.\d{1,3}\.\d{1,3})(:\d+)?$/)) {
+      return callback(null, true);
+    }
+    
+    // Allow any 10.x.x.x IP (common private network range)
+    if (origin.match(/^https?:\/\/(10\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d+)?$/)) {
+      return callback(null, true);
+    }
+    
+    console.log(`⚠️  CORS blocked origin: ${origin}`);
+    console.log(`   Allowed origins:`, allowedOrigins);
+    return callback(new Error('Not allowed by CORS: ' + origin));
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  allowedHeaders: ["Content-Type", "Authorization"],
+  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
 }));
 
 // Parse JSON and URL-encoded bodies

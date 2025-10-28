@@ -239,7 +239,13 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
             return;
           }
           const errorData = await res.json().catch(() => ({}));
-          throw new Error(errorData.error || `Failed to create daily task: ${res.status} ${res.statusText}`);
+          // Show user-friendly error message for date restrictions
+          if (res.status === 403 && errorData.message) {
+            alert(errorData.message);
+          } else {
+            throw new Error(errorData.error || `Failed to create daily task: ${res.status} ${res.statusText}`);
+          }
+          return;
         }
         
         const createdTask = await res.json();

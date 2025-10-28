@@ -17,11 +17,11 @@ router.use(authMiddleware);
 // GET /api/kras - Get all KRAs
 router.get("/", getAllKRAs);
 
+// GET /api/kras/user/:userId - Get KRAs by assigned user (must be before /:id route)
+router.get("/user/:userId", getKRAsByUser);
+
 // GET /api/kras/:id - Get KRA by ID
 router.get("/:id", getKRAById);
-
-// GET /api/kras/user/:userId - Get KRAs by assigned user
-router.get("/user/:userId", getKRAsByUser);
 
 // POST /api/kras - Create new KRA
 router.post("/", createKRA);

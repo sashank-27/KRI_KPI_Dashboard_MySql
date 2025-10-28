@@ -139,6 +139,37 @@ const createKRA = async (req, res) => {
       return res.status(400).json({ error: "Department not found" });
     }
 
+    // Check if user already has a KRA
+    const existingKRA = await KRA.findOne({
+      where: { assignedToId },
+      include: [
+        {
+          model: Department,
+          as: 'department',
+          attributes: ['id', 'name']
+        },
+        {
+          model: User,
+          as: 'assignedTo',
+          attributes: ['id', 'name', 'email']
+        },
+        {
+          model: User,
+          as: 'createdBy',
+          attributes: ['id', 'name', 'email']
+        }
+      ]
+    });
+
+    if (existingKRA) {
+      // Return the existing KRA with a flag indicating it already exists
+      return res.status(200).json({ 
+        kra: existingKRA, 
+        exists: true,
+        message: "User already has a KRA. Please edit the existing one." 
+      });
+    }
+
     // Process responsibility areas
     const processedAreas = Array.isArray(responsibilityAreas) 
       ? responsibilityAreas 

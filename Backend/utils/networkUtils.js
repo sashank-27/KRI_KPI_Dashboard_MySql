@@ -38,9 +38,16 @@ function generateAllowedOrigins(port = 3000) {
   const baseIPs = ['localhost', '127.0.0.1', ...getNetworkIPs()];
   const origins = [];
   
+  // Add all combinations of http/https with detected IPs
   baseIPs.forEach(ip => {
     origins.push(`http://${ip}:${port}`);
     origins.push(`https://${ip}:${port}`);
+  });
+  
+  // Also add origins without port for production scenarios
+  baseIPs.forEach(ip => {
+    origins.push(`http://${ip}`);
+    origins.push(`https://${ip}`);
   });
   
   return origins;

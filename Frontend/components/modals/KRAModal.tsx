@@ -31,6 +31,7 @@ interface KRAModalProps {
   users: UserType[];
   onCreateKRA: () => void;
   isEdit?: boolean;
+  onUserSelect?: (userId: string) => void;
 }
 
 export function KRAModal({
@@ -42,6 +43,7 @@ export function KRAModal({
   users,
   onCreateKRA,
   isEdit = false,
+  onUserSelect,
 }: KRAModalProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -77,6 +79,11 @@ export function KRAModal({
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors({ ...errors, [field]: "" });
+    }
+
+    // Call onUserSelect when assignedToId changes (only in create mode)
+    if (field === 'assignedToId' && !isEdit && onUserSelect) {
+      onUserSelect(value);
     }
   };
 
@@ -150,7 +157,8 @@ export function KRAModal({
                 Department <span className="text-red-500">*</span>
               </Label>
               <Select
-                value={newKRA.departmentId}
+                key={`department-${newKRA.departmentId}`}
+                value={newKRA.departmentId || undefined}
                 onValueChange={(value) => handleInputChange("departmentId", value)}
               >
                 <SelectTrigger className={errors.departmentId ? "border-red-500" : ""}>
@@ -159,10 +167,7 @@ export function KRAModal({
                 <SelectContent>
                   {departments.map((dept) => (
                     <SelectItem key={dept.id} value={dept.id}>
-                      <div className="flex items-center gap-2">
-                        <Building className="h-4 w-4 text-gray-400" />
-                        {dept.name}
-                      </div>
+                      {dept.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -181,7 +186,8 @@ export function KRAModal({
                 Assigned To <span className="text-red-500">*</span>
               </Label>
               <Select
-                value={newKRA.assignedToId}
+                key={`user-${newKRA.assignedToId}`}
+                value={newKRA.assignedToId || undefined}
                 onValueChange={(value) => handleInputChange("assignedToId", value)}
               >
                 <SelectTrigger className={errors.assignedToId ? "border-red-500" : ""}>
@@ -190,10 +196,7 @@ export function KRAModal({
                 <SelectContent>
                   {users.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-gray-400" />
-                        {user.name || user.email}
-                      </div>
+                      {user.name || user.email}
                     </SelectItem>
                   ))}
                 </SelectContent>
