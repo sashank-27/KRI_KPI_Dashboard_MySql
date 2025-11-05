@@ -1,0 +1,21 @@
+# Backend uploads - user generated content
+Backend/uploads/faqs/*
+!Backend/uploads/faqs/.gitkeep
+
+# Keep the uploads directory structure
+!Backend/uploads/
+!Backend/uploads/faqs/
+
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
