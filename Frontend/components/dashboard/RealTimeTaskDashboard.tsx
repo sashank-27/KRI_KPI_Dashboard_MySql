@@ -38,8 +38,8 @@ import { DailyTask, NewDailyTask, Department, User as UserType } from "@/lib/typ
 import { getApiBaseUrl } from "@/lib/api";
 import { DailyTaskModal } from "@/components/modals/DailyTaskModal";
 import { getAuthHeaders, requireAuth, isAuthenticated } from "@/lib/auth";
-import { useState, useEffect, useRef } from "react";
-import { io, Socket } from "socket.io-client";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useSocket } from "@/hooks/useSocket";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -122,7 +122,6 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
   const [isConnected, setIsConnected] = useState(false);
   const [realtimeEnabled, setRealtimeEnabled] = useState(true);
   // Removed recentActivity and showActivity state (Live Activity feature removed)
-  const socketRef = useRef<Socket | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState(false);
@@ -137,154 +136,148 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
   const [escalateToUser, setEscalateToUser] = useState<string>("");
   const [escalationReason, setEscalationReason] = useState<string>("");
 
-  // Initialize socket connection
+  // Use the shared socket hook
+  const { socket, isConnected: socketConnected } = useSocket();
+  
+  // Update isConnected state when socket connection changes
   useEffect(() => {
-    if (realtimeEnabled) {
-      
-        const socket = io(getApiBaseUrl(), {
-        withCredentials: true,
-        transports: ['websocket', 'polling'],
-        timeout: 20000,
-        forceNew: true,
-        reconnection: true,
-        reconnectionDelay: 1000,
-  reconnectionAttempts: 5,
-        autoConnect: true,
-        upgrade: true,
-        rememberUpgrade: false
-      });
+    setIsConnected(socketConnected && realtimeEnabled);
+  }, [socketConnected, realtimeEnabled]);
 
-      socketRef.current = socket;
-
-      socket.on("connect", () => {
-        setIsConnected(true);
-        socket.emit("join-admin-room");
-        
-        // Join user-specific room for escalated tasks
-        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-        if (currentUser.id) {
-          socket.emit("join-user-room", currentUser.id);
-        }
-      });
-
-      socket.on("disconnect", (reason) => {
-        setIsConnected(false);
-      });
-
-      socket.on("connect_error", (error) => {
-        console.error("Socket connection error:", error);
-        setIsConnected(false);
-        // Try to reconnect after a delay
-        setTimeout(() => {
-          if (socket.disconnected) {
-            socket.connect();
-          }
-        }, 2000);
-      });
-
-      socket.on("reconnect", (attemptNumber) => {
-        setIsConnected(true);
-        socket.emit("join-admin-room");
-      });
-
-      socket.on("admin-room-joined", (data) => {
-        // Admin room joined successfully
-      });
-
-      socket.on("new-task", (task: DailyTask) => {
-        setTasks(prev => {
-          // Check if task already exists to prevent duplicates
-          const exists = prev.some(t => t.id === task.id);
-          if (exists) {
-            return prev;
-          }
-          return [task, ...prev];
-        });
-        // Live Activity: setRecentActivity removed
-        setLastUpdate(new Date());
-      });
-
-      socket.on("task-updated", (task: DailyTask) => {
-        setTasks(prev => {
-          const taskExists = prev.some(t => t.id === task.id);
-          if (taskExists) {
-            // Update existing task
-            return prev.map(t => t.id === task.id ? task : t);
-          } else {
-            // Add new task if it doesn't exist
-            return [task, ...prev];
-          }
-        });
-        // Live Activity: setRecentActivity removed
-        setLastUpdate(new Date());
-      });
-
-      socket.on("task-deleted", (data: { id: string }) => {
-        setTasks(prev => prev.filter(t => t.id !== data.id));
-        // Live Activity: setRecentActivity removed
-        setLastUpdate(new Date());
-      });
-
-      socket.on("task-status-updated", (task: DailyTask) => {
-        setTasks(prev => {
-          const taskExists = prev.some(t => t.id === task.id);
-          if (taskExists) {
-            // Update existing task
-            return prev.map(t => t.id === task.id ? task : t);
-          } else {
-            // Add new task if it doesn't exist
-            return [task, ...prev];
-          }
-        });
-        // Live Activity: setRecentActivity removed
-        setLastUpdate(new Date());
-      });
-
-      socket.on("task-stats-update", () => {
-        fetchStats();
-      });
-
-      socket.on("task-assigned", (data) => {
-        // Show notification for escalated tasks
-        if (data.type === 'task-escalated') {
-          alert(`New task assigned to you: ${data.message}`);
-          // Refresh the task list to show the new escalated task
-          fetchTasks(1, itemsPerPage, true);
-        }
-      });
-
-      // Listen for real-time escalated task updates (for admin dashboard)
-      socket.on("task-escalated", (task) => {
-        setTasks(prev => {
-          const taskExists = prev.some(t => t.id === task.id);
-          if (taskExists) {
-            // Update existing task
-            return prev.map(t => t.id === task.id ? task : t);
-          } else {
-            // Add new task if it doesn't exist
-            return [task, ...prev];
-          }
-        });
-        // Live Activity: setRecentActivity removed
-        setLastUpdate(new Date());
-      });
-
-
-      return () => {
-        socket.emit("leave-admin-room");
-        socket.disconnect();
-        socketRef.current = null;
-      };
-    } else {
-      // Clean up socket if realtime is disabled
-      if (socketRef.current) {
-        socketRef.current.emit("leave-admin-room");
-        socketRef.current.disconnect();
-        socketRef.current = null;
+  // Socket event handlers
+  const handleNewTask = useCallback((task: DailyTask) => {
+    console.log('📥 New task received:', task.id);
+    setTasks(prev => {
+      // Check if task already exists to prevent duplicates
+      const exists = prev.some(t => t.id === task.id);
+      if (exists) {
+        console.log('⚠️  Task already exists, skipping:', task.id);
+        return prev;
       }
-      setIsConnected(false);
-    }
-  }, [realtimeEnabled]);
+      console.log('✅ Adding new task:', task.id);
+      return [task, ...prev];
+    });
+    setLastUpdate(new Date());
+    fetchStats();
+  }, []);
+
+  const handleTaskUpdated = useCallback((task: DailyTask) => {
+    console.log('🔄 Task updated:', task.id);
+    setTasks(prev => {
+      const taskExists = prev.some(t => t.id === task.id);
+      if (taskExists) {
+        // Update existing task
+        return prev.map(t => t.id === task.id ? task : t);
+      } else {
+        // Task might be newly visible due to filter changes, add it
+        return [task, ...prev];
+      }
+    });
+    setLastUpdate(new Date());
+    fetchStats();
+  }, []);
+
+  const handleTaskDeleted = useCallback((data: { id: string }) => {
+    console.log('🗑️  Task deleted:', data.id);
+    setTasks(prev => prev.filter(t => t.id !== data.id));
+    setLastUpdate(new Date());
+    fetchStats();
+  }, []);
+
+  const handleTaskStatusUpdated = useCallback((task: DailyTask) => {
+    console.log('📊 Task status updated:', task.id);
+    setTasks(prev => {
+      const taskExists = prev.some(t => t.id === task.id);
+      if (taskExists) {
+        return prev.map(t => t.id === task.id ? task : t);
+      } else {
+        return [task, ...prev];
+      }
+    });
+    setLastUpdate(new Date());
+    fetchStats();
+  }, []);
+
+  const handleTaskEscalated = useCallback((task: DailyTask) => {
+    console.log('🚀 Task escalated:', task.id);
+    setTasks(prev => {
+      const taskExists = prev.some(t => t.id === task.id);
+      if (taskExists) {
+        return prev.map(t => t.id === task.id ? task : t);
+      } else {
+        return [task, ...prev];
+      }
+    });
+    setLastUpdate(new Date());
+    fetchStats();
+  }, []);
+
+  const handleTaskRolledBack = useCallback((task: DailyTask) => {
+    console.log('↩️  Task rolled back:', task.id);
+    setTasks(prev => {
+      const taskExists = prev.some(t => t.id === task.id);
+      if (taskExists) {
+        return prev.map(t => t.id === task.id ? task : t);
+      } else {
+        return [task, ...prev];
+      }
+    });
+    setLastUpdate(new Date());
+    fetchStats();
+  }, []);
+
+  const handleStatsUpdate = useCallback(() => {
+    console.log('📈 Stats update triggered');
+    fetchStats();
+  }, []);
+
+  const handleTaskProgressAdded = useCallback((data: any) => {
+    console.log('📝 Task progress added:', data.taskId);
+    // Refresh the task to get updated progress
+    setTasks(prev => {
+      const taskIndex = prev.findIndex(t => t.id === data.taskId);
+      if (taskIndex !== -1) {
+        // Task exists, trigger a refresh by updating its timestamp
+        const updatedTasks = [...prev];
+        updatedTasks[taskIndex] = { 
+          ...updatedTasks[taskIndex], 
+          updatedAt: new Date().toISOString() 
+        };
+        return updatedTasks;
+      }
+      return prev;
+    });
+  }, []);
+
+  // Set up socket event listeners only when realtime is enabled
+  useEffect(() => {
+    if (!realtimeEnabled || !socket) return;
+
+    console.log('🎧 Setting up socket event listeners');
+
+    socket.on('new-task', handleNewTask);
+    socket.on('task-updated', handleTaskUpdated);
+    socket.on('task-deleted', handleTaskDeleted);
+    socket.on('task-status-updated', handleTaskStatusUpdated);
+    socket.on('task-escalated', handleTaskEscalated);
+    socket.on('task-rolled-back', handleTaskRolledBack);
+    socket.on('task-stats-update', handleStatsUpdate);
+    socket.on('task-progress-added', handleTaskProgressAdded);
+
+    return () => {
+      console.log('🔇 Removing socket event listeners');
+      socket.off('new-task', handleNewTask);
+      socket.off('task-updated', handleTaskUpdated);
+      socket.off('task-deleted', handleTaskDeleted);
+      socket.off('task-status-updated', handleTaskStatusUpdated);
+      socket.off('task-escalated', handleTaskEscalated);
+      socket.off('task-rolled-back', handleTaskRolledBack);
+      socket.off('task-stats-update', handleStatsUpdate);
+      socket.off('task-progress-added', handleTaskProgressAdded);
+    };
+  }, [socket, realtimeEnabled, handleNewTask, handleTaskUpdated, handleTaskDeleted, 
+      handleTaskStatusUpdated, handleTaskEscalated, handleTaskRolledBack, 
+      handleStatsUpdate, handleTaskProgressAdded]);
 
   // Debounce search term
   useEffect(() => {
@@ -1235,7 +1228,7 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
                         {/* Actions */}
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex items-center space-x-2">
-                            {/* Escalate Button - only show for in-progress, not escalated, and owned tasks */}
+                            {/* Escalate Button - only show for in-progress (not closed), not escalated, and owned tasks */}
                             {task.status === 'in-progress' && !task.isEscalated && currentUser &&
                               ((typeof task.user === 'string' && task.user === currentUser.id) ||
                                (typeof task.user === 'object' && task.user?.id === currentUser.id)) && (

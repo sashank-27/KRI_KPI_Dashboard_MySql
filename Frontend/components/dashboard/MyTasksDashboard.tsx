@@ -23,6 +23,8 @@ import {
   ArrowDownLeft,
   Users,
   RefreshCw,
+  Eye,
+  TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +35,8 @@ import { DailyTask, NewDailyTask, Department, User as UserType } from "@/lib/typ
 import { getApiBaseUrl } from "@/lib/api";
 import { DailyTaskModal } from "@/components/modals/DailyTaskModal";
 import { CompleteTaskModal } from "@/components/modals/CompleteTaskModal";
+import { TaskViewModal } from "@/components/modals/TaskViewModal";
+import { AddProgressModal } from "@/components/modals/AddProgressModal";
 import { getAuthHeaders, requireAuth } from "@/lib/auth";
 import { useState, useEffect, useCallback } from "react";
 import { useSocket, useSocketEvent } from "@/hooks/useSocket";
@@ -62,6 +66,32 @@ interface MyTasksDashboardProps {
 
 export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksDashboardProps) {
   const [tasks, setTasks] = useState<DailyTask[]>([]);
+  const [allTasks, setAllTasks] = useState<DailyTask[]>([]); // For tracking multi-user SR-IDs
+  
+  // Map of SR-ID to array of users (for multi-user indication)
+  const srIdToUsers: Record<string, Set<string>> = {};
+  allTasks.forEach(task => {
+    if (task.srId && task.srId.trim()) {
+      // Get user ID from either object or string
+      let userId = '';
+      if (typeof task.user === 'object' && task.user?.id) {
+        userId = String(task.user.id);
+      } else if (typeof task.user === 'string') {
+        userId = task.user;
+      } else if (task.userId) {
+        userId = String(task.userId);
+      }
+      
+      const normalizedSrId = task.srId.trim().toLowerCase();
+      if (!srIdToUsers[normalizedSrId]) {
+        srIdToUsers[normalizedSrId] = new Set();
+      }
+      if (userId) {
+        srIdToUsers[normalizedSrId].add(userId);
+      }
+    }
+  });
+  
   const [isLoading, setIsLoading] = useState(true);
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -86,6 +116,10 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
   const [escalatedTo, setEscalatedTo] = useState("");
   const [completeTaskModalOpen, setCompleteTaskModalOpen] = useState(false);
   const [taskToComplete, setTaskToComplete] = useState<DailyTask | null>(null);
+  const [viewTaskModalOpen, setViewTaskModalOpen] = useState(false);
+  const [taskToView, setTaskToView] = useState<DailyTask | null>(null);
+  const [addProgressModalOpen, setAddProgressModalOpen] = useState(false);
+  const [taskForProgress, setTaskForProgress] = useState<DailyTask | null>(null);
 
   // Socket.IO for real-time updates
   const { socket, isConnected } = useSocket();
@@ -115,10 +149,37 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
     }
   }, [socket, isConnected]);
 
+  // Fetch all tasks for multi-user SR-ID tracking
+  const fetchAllTasksForSRTracking = async () => {
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/daily-tasks`, {
+        headers: getAuthHeaders(),
+        credentials: "include",
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        
+        // Handle different response formats
+        let tasksArray: DailyTask[] = [];
+        if (Array.isArray(data)) {
+          tasksArray = data;
+        } else if (data && Array.isArray(data.tasks)) {
+          tasksArray = data.tasks;
+        }
+        
+        setAllTasks(tasksArray);
+      }
+    } catch (err) {
+      console.error("Failed to fetch all tasks for SR tracking", err);
+    }
+  };
+
   // Fetch user's daily tasks
   useEffect(() => {
     fetchUserTasks();
-    fetchEscalatedTasksCount();
+    // fetchEscalatedTasksCount(); // No longer needed - escalated count is calculated from main tasks
+    fetchAllTasksForSRTracking();
   }, [currentUserId]);
 
   const fetchUserTasks = async () => {
@@ -142,11 +203,15 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
       setTasks(Array.isArray(data.tasks) ? data.tasks : []);
       
       // Calculate stats
+      // Count escalated tasks that were escalated TO this user (where userRole is 'owner' and isEscalated is true)
+      // Don't count tasks that this user escalated away (userRole is 'observer')
       const taskStats = {
         total: data.tasks?.length || 0,
         inProgress: data.tasks?.filter((task: DailyTask) => task.status === "in-progress").length || 0,
         closed: data.tasks?.filter((task: DailyTask) => task.status === "closed").length || 0,
-        escalated: 0, // Will be fetched separately
+        escalated: data.tasks?.filter((task: DailyTask) => 
+          task.isEscalated === true && task.userRole === 'owner'
+        ).length || 0, // Only count tasks escalated TO this user
       };
       setStats(taskStats);
     } catch (err) {
@@ -195,7 +260,8 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
     if (isRelevant) {
       
       fetchUserTasks();
-      fetchEscalatedTasksCount();
+      // fetchEscalatedTasksCount(); // No longer needed
+      fetchAllTasksForSRTracking();
     } else {
       
     }
@@ -309,6 +375,29 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
     }
   };
 
+  const handleViewTask = (task: DailyTask) => {
+    setTaskToView(task);
+    setViewTaskModalOpen(true);
+  };
+
+  const handleViewTaskModalClose = () => {
+    setViewTaskModalOpen(false);
+    setTaskToView(null);
+  };
+
+  const handleAddProgress = (task: DailyTask) => {
+    setTaskForProgress(task);
+    setAddProgressModalOpen(true);
+  };
+
+  const handleAddProgressModalClose = (refreshTasks?: boolean) => {
+    setAddProgressModalOpen(false);
+    setTaskForProgress(null);
+    if (refreshTasks) {
+      fetchUserTasks(); // Refresh the task list after adding progress
+    }
+  };
+
   // Get escalation details for tooltip
   const getEscalationDetails = (task: DailyTask) => {
     if (!task.isEscalated) return null;
@@ -375,7 +464,46 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
   };
 
   // Rollback escalated task
+  const handleRollbackTask = async (taskId: string) => {
+    // Confirm rollback action
+    const confirmed = window.confirm(
+      "Are you sure you want to rollback this task?\n\n" +
+      "Note: Rollback is only allowed if the escalated user hasn't started working on it yet."
+    );
+    
+    if (!confirmed) return;
 
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/daily-tasks/${taskId}/rollback`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        credentials: "include",
+      });
+      
+      if (!res.ok) {
+        if (res.status === 401) {
+          requireAuth();
+          return;
+        }
+        const errorData = await res.json().catch(() => ({}));
+        
+        // Show user-friendly error message
+        if (res.status === 403 && errorData.message) {
+          alert(`Rollback Not Allowed\n\n${errorData.message}`);
+        } else {
+          throw new Error(errorData.error || `Failed to rollback task: ${res.status} ${res.statusText}`);
+        }
+        return;
+      }
+      
+      // Success - refresh tasks to show updated data
+      alert('Task rolled back successfully!');
+      fetchUserTasks();
+    } catch (err) {
+      console.error("Failed to rollback task", err);
+      alert(`Failed to rollback task: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  };
 
   // Filter tasks
   const filteredTasks = tasks.filter((task) => {
@@ -673,15 +801,52 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
                             {getStatusIcon(task.status)}
                             <span className="ml-1 capitalize">{task.status}</span>
                           </Badge>
-                          {task.isEscalated && (
+                          {/* Show observer badge prominently if user is watching */}
+                          {task.userRole === 'observer' && (
+                            <Badge variant="outline" className="text-indigo-600 border-indigo-200 bg-indigo-50">
+                              <Eye className="h-3 w-3 mr-1" />
+                              You're Watching
+                            </Badge>
+                          )}
+                          {task.isEscalated && task.userRole !== 'observer' && (
                             <Badge variant="outline" className="text-orange-600 border-orange-200">
                               <ArrowUpRight className="h-3 w-3 mr-1" />
-                              Escalated
+                              Escalated to You
                             </Badge>
                           )}
                           {task.srId && (
-                            <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50">
+                            <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50 inline-flex items-center gap-1">
                               <span className="font-mono text-xs">SR-{task.srId}</span>
+                              {(() => {
+                                const normalizedSrId = task.srId.trim().toLowerCase();
+                                const hasMultipleUsers = srIdToUsers[normalizedSrId] && srIdToUsers[normalizedSrId].size > 1;
+                                return hasMultipleUsers ? (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="ml-1 text-amber-600 flex items-center cursor-pointer">
+                                          <Users className="h-3 w-3" />
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <span>
+                                          Multiple users handling this task<br />
+                                          <ul className="mt-1 ml-2 list-disc text-xs text-gray-800">
+                                            {Array.from(srIdToUsers[normalizedSrId]).map((userId) => {
+                                              const userObj = users.find(u => String(u.id) === String(userId));
+                                              return (
+                                                <li key={userId} className="mb-0.5">
+                                                  {userObj?.name || userId}
+                                                </li>
+                                              );
+                                            })}
+                                          </ul>
+                                        </span>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                ) : null;
+                              })()}
                             </Badge>
                           )}
                         </div>
@@ -760,97 +925,119 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
                     )}
 
                     {/* Action Buttons */}
-                    <div className="flex gap-2 pt-2">
-                      {/* Status Change Button - Always visible */}
-                      {task.status === 'closed' ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleUpdateTaskStatus(task.id, 'in-progress')}
-                          className="text-yellow-600 border-yellow-200 hover:bg-yellow-50"
-                        >
-                          <RefreshCw className="h-4 w-4 mr-1" />
-                          Reopen
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => task.srId ? handleCompleteWithSolution(task) : handleUpdateTaskStatus(task.id, 'closed')}
-                          className="text-green-600 border-green-200 hover:bg-green-50"
-                        >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Complete{task.srId ? ' & Save Solution' : ''}
-                        </Button>
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {/* View Button - Always visible */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewTask(task)}
+                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        View
+                      </Button>
+
+                      {/* Action buttons only for task owners, not observers */}
+                      {task.userRole !== 'observer' && (
+                        <>
+                          {/* Add Progress Button - Only for in-progress tasks */}
+                          {task.status === 'in-progress' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAddProgress(task)}
+                              className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                            >
+                              <TrendingUp className="h-4 w-4 mr-1" />
+                              Add Progress
+                            </Button>
+                          )}
+
+                          {/* Status Change Button - Always visible for owners */}
+                          {task.status === 'closed' ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleUpdateTaskStatus(task.id, 'in-progress')}
+                              className="text-yellow-600 border-yellow-200 hover:bg-yellow-50"
+                            >
+                              <RefreshCw className="h-4 w-4 mr-1" />
+                              Reopen
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => task.srId ? handleCompleteWithSolution(task) : handleUpdateTaskStatus(task.id, 'closed')}
+                              className="text-green-600 border-green-200 hover:bg-green-50"
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" />
+                              Complete{task.srId ? ' & Save Solution' : ''}
+                            </Button>
+                          )}
+                          
+                          {/* Escalate Button - Only show if not already escalated and task is not closed */}
+                          {!task.isEscalated && task.status !== 'closed' && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEscalateTask(task)}
+                              className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                            >
+                              <ArrowUpRight className="h-4 w-4 mr-1" />
+                              Escalate
+                            </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="font-medium">Escalate Task</p>
+                                <p className="text-xs text-gray-500">Click to escalate this task to another user</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </>
                       )}
                       
-                      {!task.isEscalated && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEscalateTask(task)}
-                          className="text-orange-600 border-orange-200 hover:bg-orange-50"
-                        >
-                          <ArrowUpRight className="h-4 w-4 mr-1" />
-                          Escalate
-                        </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="font-medium">Escalate Task</p>
-                            <p className="text-xs text-gray-500">Click to escalate this task to another user</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      )}
-                      {task.isEscalated && (() => {
-                        // Use originalUser if available, otherwise fallback to escalatedBy
-                        const originalUserId = task.originalUser || task.escalatedBy;
-                        const canRollback = originalUserId && 
-                          (typeof originalUserId === 'string' ? originalUserId : originalUserId.id) === currentUserId;
-                        
-                        return (
-                          <div className="flex gap-2">
-                            {canRollback && (
+                      {/* Observer section - Show when user is watching an escalated task */}
+                      {task.userRole === 'observer' && (
+                        <>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="outline" className="text-indigo-600 border-indigo-200 bg-indigo-50 cursor-help">
+                                <Eye className="h-3 w-3 mr-1" />
+                                Watching (Read-Only)
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="font-medium">You're watching this task</p>
+                              <p className="text-xs text-gray-500">You escalated this task. You can view progress but cannot edit.</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          
+                          {/* Rollback button for observer (original user) */}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                // onClick for rollback removed, add your logic here if needed
+                                onClick={() => handleRollbackTask(task.id)}
                                 className="text-blue-600 border-blue-200 hover:bg-blue-50"
                               >
                                 <ArrowDownLeft className="h-4 w-4 mr-1" />
                                 Rollback
                               </Button>
-                            )}
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Badge variant="outline" className="text-orange-600 border-orange-200 cursor-help">
-                              Escalated
-                            </Badge>
-                              </TooltipTrigger>
-                              <TooltipContent className="max-w-xs">
-                                <div className="space-y-1">
-                                  <p className="font-medium text-orange-600">Task Escalated</p>
-                                  {(() => {
-                                    const details = getEscalationDetails(task);
-                                    if (!details) return <p className="text-xs">No escalation details available</p>;
-                                    return (
-                                      <>
-                                        <p className="text-xs"><span className="font-medium">From:</span> {details.escalatedBy}</p>
-                                        <p className="text-xs"><span className="font-medium">To:</span> {details.escalatedTo}</p>
-                                        <p className="text-xs"><span className="font-medium">Date:</span> {details.escalatedAt}</p>
-                                        {details.reason && (
-                                          <p className="text-xs"><span className="font-medium">Reason:</span> {details.reason}</p>
-                                        )}
-                                      </>
-                                    );
-                                  })()}
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
-                          </div>
-                        );
-                      })()}
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              <p className="font-medium">Rollback Task</p>
+                              <p className="text-xs text-gray-500 mb-1">Return this task to you from the escalated user</p>
+                              <p className="text-xs text-amber-600 italic">
+                                ⚠️ Only allowed if no work has been done yet
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -955,6 +1142,20 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
         isOpen={completeTaskModalOpen}
         onClose={handleCompleteTaskModalClose}
         task={taskToComplete}
+      />
+
+      {/* Task View Modal */}
+      <TaskViewModal
+        isOpen={viewTaskModalOpen}
+        onClose={handleViewTaskModalClose}
+        task={taskToView}
+      />
+
+      {/* Add Progress Modal */}
+      <AddProgressModal
+        isOpen={addProgressModalOpen}
+        onClose={handleAddProgressModalClose}
+        task={taskForProgress}
       />
     </div>
   );

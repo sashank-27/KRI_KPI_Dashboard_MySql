@@ -206,11 +206,9 @@ export default function KPIDashboard() {
     }
   };
 
-  // Real-time event handlers
-  const handleTaskUpdate = useCallback((data: any) => {
-
-    
-    // Refresh KPI data when any task is updated
+  // Real-time event handlers - use debouncing to avoid too many refreshes
+  const refreshKPIData = useCallback(() => {
+    console.log('📊 Refreshing KPI data');
     if (selectedUser === "all") {
       fetchAllUsersKPIData();
     } else {
@@ -218,60 +216,40 @@ export default function KPIDashboard() {
     }
   }, [selectedUser, selectedYear, selectedMonth, dateFrom, dateTo, filterType]);
 
-  const handleTaskCreated = useCallback((data: any) => {
+  const handleTaskUpdate = useCallback((task: any) => {
+    console.log('🔄 Task updated in KPI dashboard:', task?.id);
+    refreshKPIData();
+  }, [refreshKPIData]);
 
-    
-    // Refresh KPI data when a new task is created
-    if (selectedUser === "all") {
-      fetchAllUsersKPIData();
-    } else {
-      fetchUserKPIData();
-    }
-  }, [selectedUser, selectedYear, selectedMonth, dateFrom, dateTo, filterType]);
+  const handleTaskCreated = useCallback((task: any) => {
+    console.log('📥 New task in KPI dashboard:', task?.id);
+    refreshKPIData();
+  }, [refreshKPIData]);
 
   const handleTaskDeleted = useCallback((data: any) => {
+    console.log('🗑️  Task deleted in KPI dashboard:', data?.id);
+    refreshKPIData();
+  }, [refreshKPIData]);
 
-    
-    // Refresh KPI data when a task is deleted
-    if (selectedUser === "all") {
-      fetchAllUsersKPIData();
-    } else {
-      fetchUserKPIData();
-    }
-  }, [selectedUser, selectedYear, selectedMonth, dateFrom, dateTo, filterType]);
+  const handleTaskEscalated = useCallback((task: any) => {
+    console.log('🚀 Task escalated in KPI dashboard:', task?.id);
+    refreshKPIData();
+  }, [refreshKPIData]);
 
-  const handleTaskEscalated = useCallback((data: any) => {
+  const handleTaskRollback = useCallback((task: any) => {
+    console.log('↩️  Task rolled back in KPI dashboard:', task?.id);
+    refreshKPIData();
+  }, [refreshKPIData]);
 
-    
-    // Refresh KPI data when a task is escalated
-    if (selectedUser === "all") {
-      fetchAllUsersKPIData();
-    } else {
-      fetchUserKPIData();
-    }
-  }, [selectedUser, selectedYear, selectedMonth, dateFrom, dateTo, filterType]);
+  const handleTaskStatusUpdated = useCallback((task: any) => {
+    console.log('📊 Task status updated in KPI dashboard:', task?.id);
+    refreshKPIData();
+  }, [refreshKPIData]);
 
-  const handleTaskRollback = useCallback((data: any) => {
-
-    
-    // Refresh KPI data when a task is rolled back
-    if (selectedUser === "all") {
-      fetchAllUsersKPIData();
-    } else {
-      fetchUserKPIData();
-    }
-  }, [selectedUser, selectedYear, selectedMonth, dateFrom, dateTo, filterType]);
-
-  const handleTaskStatusUpdated = useCallback((data: any) => {
-
-    
-    // Refresh KPI data when task status is updated
-    if (selectedUser === "all") {
-      fetchAllUsersKPIData();
-    } else {
-      fetchUserKPIData();
-    }
-  }, [selectedUser, selectedYear, selectedMonth, dateFrom, dateTo, filterType]);
+  const handleStatsUpdate = useCallback((data: any) => {
+    console.log('📈 Stats update triggered in KPI dashboard');
+    refreshKPIData();
+  }, [refreshKPIData]);
 
   // Set up real-time event listeners
   useSocketEvent(socket, 'task-updated', handleTaskUpdate);
@@ -280,16 +258,7 @@ export default function KPIDashboard() {
   useSocketEvent(socket, 'task-escalated', handleTaskEscalated);
   useSocketEvent(socket, 'task-rolled-back', handleTaskRollback);
   useSocketEvent(socket, 'task-status-updated', handleTaskStatusUpdated);
-  
-  // Listen for stats updates to refresh data
-  useSocketEvent(socket, 'task-stats-update', () => {
-
-    if (selectedUser === "all") {
-      fetchAllUsersKPIData();
-    } else {
-      fetchUserKPIData();
-    }
-  });
+  useSocketEvent(socket, 'task-stats-update', handleStatsUpdate);
 
   const exportToCSV = () => {
     const dataToExport = selectedUser === "all" ? kpiData : [userKpiData];

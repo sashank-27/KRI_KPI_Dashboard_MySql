@@ -89,6 +89,8 @@ export interface DailyTask {
   createdAt?: string;
   updatedAt?: string;
   closedAt?: string;
+  // User role for this task
+  userRole?: "owner" | "observer" | "viewer"; // owner: full control, observer: read-only (escalated away)
 }
 
 export interface NewDailyTask {

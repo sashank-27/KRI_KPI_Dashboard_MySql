@@ -3,6 +3,7 @@ const Department = require('./Department');
 const KRA = require('./KRA');
 const DailyTask = require('./DailyTask');
 const FAQ = require('./FAQ');
+const TaskProgress = require('./TaskProgress');
 
 // Define associations
 function setupAssociations() {
@@ -164,6 +165,29 @@ function setupAssociations() {
   Department.hasMany(FAQ, {
     foreignKey: 'departmentId',
     as: 'faqs'
+  });
+
+  // TaskProgress associations
+  TaskProgress.belongsTo(DailyTask, {
+    foreignKey: 'taskId',
+    as: 'task',
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE'
+  });
+  DailyTask.hasMany(TaskProgress, {
+    foreignKey: 'taskId',
+    as: 'progressHistory'
+  });
+
+  TaskProgress.belongsTo(User, {
+    foreignKey: 'userId',
+    as: 'user',
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE'
+  });
+  User.hasMany(TaskProgress, {
+    foreignKey: 'userId',
+    as: 'taskProgress'
   });
 
   console.log('✅ Database associations setup completed');

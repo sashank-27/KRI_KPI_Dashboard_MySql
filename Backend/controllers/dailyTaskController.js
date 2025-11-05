@@ -2,21 +2,39 @@ const DailyTask = require("../models/DailyTask");
 const User = require("../models/User");
 const Department = require("../models/Department");
 const FAQ = require("../models/FAQ");
+const TaskProgress = require("../models/TaskProgress");
 const { Op, fn, col, literal } = require("sequelize");
 
 // Helper function to emit real-time updates
 const emitTaskUpdate = (req, eventType, data) => {
   const io = req.app.get('io');
   if (io) {
+    console.log(`🔔 Emitting socket event: ${eventType}`);
+    
     // Emit specific event type to all connected clients
     io.emit(eventType, data);
     
     // Emit to admin room specifically
     io.to('admin-room').emit(eventType, data);
     
+    // If there's a user associated with the task, emit to their room
+    if (data && data.userId) {
+      io.to(`user-${data.userId}`).emit(eventType, data);
+    }
+    
+    // If task is escalated, notify the escalated user
+    if (data && data.escalatedToId) {
+      io.to(`user-${data.escalatedToId}`).emit(eventType, data);
+      io.to(`user-${data.escalatedToId}`).emit('task-escalated-to-you', data);
+    }
+    
     // Emit stats update to trigger statistics refresh
-    io.emit('task-stats-update');
-    io.to('admin-room').emit('task-stats-update');
+    io.emit('task-stats-update', { timestamp: new Date() });
+    io.to('admin-room').emit('task-stats-update', { timestamp: new Date() });
+    
+    console.log(`✅ Socket event emitted successfully: ${eventType}`);
+  } else {
+    console.warn(`⚠️  Socket.IO not available for event: ${eventType}`);
   }
 };
 
@@ -155,7 +173,18 @@ const getDailyTasksByUser = async (req, res) => {
     const userId = req.params.userId;
     const { page = 1, limit = 10, status, dateFrom, dateTo } = req.query;
     
-    const whereClause = { userId: userId };
+    // Build where clause to include:
+    // 1. Tasks currently assigned to user (userId = currentUser)
+    // 2. Tasks escalated away but user was original owner (originalUserId = currentUser AND isEscalated = true)
+    const whereClause = {
+      [Op.or]: [
+        { userId: userId }, // Currently assigned tasks
+        { 
+          originalUserId: userId, // Tasks escalated away
+          isEscalated: true 
+        }
+      ]
+    };
     
     if (status) whereClause.status = status;
     
@@ -206,8 +235,22 @@ const getDailyTasksByUser = async (req, res) => {
       offset: offset
     });
 
+    // Add userRole field to each task to indicate user's permission level
+    const tasksWithRole = tasks.map(task => {
+      const taskData = task.toJSON();
+      // Determine user's role for this task
+      if (task.userId === parseInt(userId)) {
+        taskData.userRole = 'owner'; // Current assignee - full control
+      } else if (task.originalUserId === parseInt(userId) && task.isEscalated) {
+        taskData.userRole = 'observer'; // Original user watching escalated task - read-only
+      } else {
+        taskData.userRole = 'viewer'; // Default
+      }
+      return taskData;
+    });
+
     res.json({
-      tasks,
+      tasks: tasksWithRole,
       totalPages: Math.ceil(total / limit),
       currentPage: parseInt(page),
       total,
@@ -1058,6 +1101,37 @@ const rollbackTask = async (req, res) => {
       return res.status(400).json({ error: "Task is not escalated or has no original user" });
     }
 
+    // Verify the requesting user is the original user
+    if (currentTask.originalUserId !== req.user.id) {
+      return res.status(403).json({ 
+        error: "Permission denied", 
+        message: "Only the original user who escalated the task can roll it back" 
+      });
+    }
+
+    // Check if task is already completed
+    if (currentTask.status === 'closed') {
+      return res.status(403).json({ 
+        error: "Cannot rollback task", 
+        message: "Cannot rollback a completed task. The escalated user has finished the work." 
+      });
+    }
+
+    // Check if escalated user has done any work (added progress)
+    const progressByEscalatedUser = await TaskProgress.count({
+      where: { 
+        taskId: id, 
+        userId: currentTask.userId // Current assignee (escalated user)
+      }
+    });
+
+    if (progressByEscalatedUser > 0) {
+      return res.status(403).json({ 
+        error: "Cannot rollback task", 
+        message: `The escalated user has already added ${progressByEscalatedUser} progress update(s). Rollback is not allowed once work has started.` 
+      });
+    }
+
     // Rollback the escalation
     const updateData = {
       escalatedToId: null,
@@ -1126,6 +1200,105 @@ const rollbackTask = async (req, res) => {
   }
 };
 
+// Add progress update to a task
+const addTaskProgress = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { date, progressDescription } = req.body;
+    const userId = req.user.id;
+
+    console.log('📝 Adding task progress:', { taskId: id, userId, date, progressDescription: progressDescription?.substring(0, 50) });
+
+    // Validate required fields
+    if (!progressDescription || !progressDescription.trim()) {
+      console.log('❌ Validation failed: Progress description is required');
+      return res.status(400).json({ error: "Progress description is required" });
+    }
+
+    // Check if task exists
+    const task = await DailyTask.findByPk(id);
+    if (!task) {
+      console.log('❌ Task not found:', id);
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    // Check if user is authorized (task owner or assigned user)
+    // Convert to numbers for comparison since userId might be string from JWT
+    const userIdNum = parseInt(userId);
+    console.log('🔐 Authorization check:', { taskUserId: task.userId, escalatedToId: task.escalatedToId, userIdNum, role: req.user.role });
+    if (task.userId !== userIdNum && task.escalatedToId !== userIdNum && req.user.role !== 'admin') {
+      console.log('❌ Authorization failed');
+      return res.status(403).json({ error: "Not authorized to update this task" });
+    }
+
+    // Create progress entry
+    console.log('💾 Creating progress entry...');
+    const progress = await TaskProgress.create({
+      taskId: id,
+      date: date || new Date(),
+      progressDescription: progressDescription.trim(),
+      userId: userIdNum
+    });
+    console.log('✅ Progress created:', progress.id);
+
+    // Fetch the progress with user details
+    const progressWithUser = await TaskProgress.findByPk(progress.id, {
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'name', 'email']
+        }
+      ]
+    });
+    console.log('✅ Progress with user details fetched');
+
+    // Emit real-time update
+    emitTaskUpdate(req, 'task-progress-added', {
+      taskId: id,
+      progress: progressWithUser
+    });
+
+    console.log('✅ Progress update completed successfully');
+    res.status(201).json(progressWithUser);
+  } catch (error) {
+    console.error("❌ Error adding task progress:", error);
+    console.error("Error details:", error.message, error.stack);
+    res.status(500).json({ error: error.message || "Failed to add task progress" });
+  }
+};
+
+// Get progress history for a task
+const getTaskProgress = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if task exists
+    const task = await DailyTask.findByPk(id);
+    if (!task) {
+      return res.status(404).json({ error: "Task not found" });
+    }
+
+    // Get all progress entries for the task
+    const progressHistory = await TaskProgress.findAll({
+      where: { taskId: id },
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'name', 'email']
+        }
+      ],
+      order: [['date', 'DESC'], ['createdAt', 'DESC']]
+    });
+
+    res.json(progressHistory);
+  } catch (error) {
+    console.error("Error fetching task progress:", error);
+    res.status(500).json({ error: "Failed to fetch task progress" });
+  }
+};
+
 module.exports = {
   getAllDailyTasks,
   getDailyTaskById,
@@ -1142,4 +1315,6 @@ module.exports = {
   getEscalatedTasks,
   getTasksEscalatedByUser,
   getOverallKPIData,
+  addTaskProgress,
+  getTaskProgress,
 };

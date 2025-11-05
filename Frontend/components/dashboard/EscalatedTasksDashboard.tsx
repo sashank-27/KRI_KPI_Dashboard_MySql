@@ -97,56 +97,101 @@ export function EscalatedTasksDashboard({ currentUserId, departments, users }: E
   };
 
   // Real-time event handlers
-  const handleTaskUpdate = useCallback((data: any) => {
+  const handleTaskUpdate = useCallback((task: DailyTask) => {
+    console.log('🔄 Task updated in escalated dashboard:', task.id);
+    // Check if this task is escalated and involves current user
+    if (task.isEscalated) {
+      const escalatedToCurrentUser = typeof task.escalatedTo === 'string' 
+        ? task.escalatedTo === currentUserId 
+        : task.escalatedTo?.id === currentUserId;
+      
+      const escalatedByCurrentUser = typeof task.escalatedBy === 'string'
+        ? task.escalatedBy === currentUserId
+        : task.escalatedBy?.id === currentUserId;
 
-    
-    // Refresh escalated tasks when any task is updated
-    fetchEscalatedTasks();
-  }, []);
+      if (escalatedToCurrentUser) {
+        setEscalatedTasks(prev => {
+          const exists = prev.some(t => t.id === task.id);
+          if (exists) {
+            return prev.map(t => t.id === task.id ? task : t);
+          } else {
+            return [task, ...prev];
+          }
+        });
+      }
 
-  const handleTaskCreated = useCallback((data: any) => {
+      if (escalatedByCurrentUser) {
+        setEscalatedByMe(prev => {
+          const exists = prev.some(t => t.id === task.id);
+          if (exists) {
+            return prev.map(t => t.id === task.id ? task : t);
+          } else {
+            return [task, ...prev];
+          }
+        });
+      }
+    }
+  }, [currentUserId]);
 
-    
-    // Refresh escalated tasks when a new task is created (in case it's escalated)
-    fetchEscalatedTasks();
-  }, []);
+  const handleNewTask = useCallback((task: DailyTask) => {
+    console.log('📥 New task in escalated dashboard:', task.id);
+    // New tasks might be escalated, refresh to check
+    if (task.isEscalated) {
+      handleTaskUpdate(task);
+    }
+  }, [handleTaskUpdate]);
 
-  const handleTaskDeleted = useCallback((data: any) => {
-
-    
+  const handleTaskDeleted = useCallback((data: { id: string }) => {
+    console.log('🗑️  Task deleted in escalated dashboard:', data.id);
     // Remove the deleted task from local state
-    setEscalatedTasks(prevTasks => prevTasks.filter(task => task.id !== data.data.id));
-    setEscalatedByMe(prevTasks => prevTasks.filter(task => task.id !== data.data.id));
+    setEscalatedTasks(prevTasks => prevTasks.filter(task => task.id !== data.id));
+    setEscalatedByMe(prevTasks => prevTasks.filter(task => task.id !== data.id));
   }, []);
 
-  const handleTaskEscalated = useCallback((data: any) => {
-
-    
+  const handleTaskEscalated = useCallback((task: DailyTask) => {
+    console.log('🚀 Task escalated in escalated dashboard:', task.id);
     // Refresh escalated tasks when a task is escalated
-    fetchEscalatedTasks();
+    handleTaskUpdate(task);
+  }, [handleTaskUpdate]);
+
+  const handleTaskRollback = useCallback((task: DailyTask) => {
+    console.log('↩️  Task rolled back in escalated dashboard:', task.id);
+    // Remove from escalated lists if rolled back
+    if (!task.isEscalated) {
+      setEscalatedTasks(prevTasks => prevTasks.filter(t => t.id !== task.id));
+      setEscalatedByMe(prevTasks => prevTasks.filter(t => t.id !== task.id));
+    }
   }, []);
 
-  const handleTaskRollback = useCallback((data: any) => {
+  const handleTaskStatusUpdated = useCallback((task: DailyTask) => {
+    console.log('📊 Task status updated in escalated dashboard:', task.id);
+    // Update task if it's in our lists
+    if (task.isEscalated) {
+      handleTaskUpdate(task);
+    }
+  }, [handleTaskUpdate]);
 
-    
-    // Refresh escalated tasks when a task is rolled back
-    fetchEscalatedTasks();
-  }, []);
-
-  const handleTaskStatusUpdated = useCallback((data: any) => {
-
-    
-    // Refresh escalated tasks when status is updated
-    fetchEscalatedTasks();
+  const handleTaskEscalatedToYou = useCallback((task: DailyTask) => {
+    console.log('📬 Task escalated to you:', task.id);
+    // Add to escalated tasks list
+    setEscalatedTasks(prev => {
+      const exists = prev.some(t => t.id === task.id);
+      if (exists) {
+        return prev.map(t => t.id === task.id ? task : t);
+      } else {
+        return [task, ...prev];
+      }
+    });
   }, []);
 
   // Set up real-time event listeners
-  useSocketEvent(socket, 'task-update', handleTaskUpdate);
-  useSocketEvent(socket, 'task-created', handleTaskCreated);
+  useSocketEvent(socket, 'task-updated', handleTaskUpdate);
+  useSocketEvent(socket, 'new-task', handleNewTask);
   useSocketEvent(socket, 'task-deleted', handleTaskDeleted);
   useSocketEvent(socket, 'task-escalated', handleTaskEscalated);
-  useSocketEvent(socket, 'task-rollback', handleTaskRollback);
+  useSocketEvent(socket, 'task-rolled-back', handleTaskRollback);
   useSocketEvent(socket, 'task-status-updated', handleTaskStatusUpdated);
+  useSocketEvent(socket, 'task-escalated-to-you', handleTaskEscalatedToYou);
 
   // Rollback escalated task
   const [rollbackDialogOpen, setRollbackDialogOpen] = useState(false);

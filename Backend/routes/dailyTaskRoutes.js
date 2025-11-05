@@ -15,6 +15,8 @@ const {
   rollbackTask,
   getEscalatedTasks,
   getTasksEscalatedByUser,
+  addTaskProgress,
+  getTaskProgress,
 } = require("../controllers/dailyTaskController");
 const { authMiddleware } = require("../middleware");
 
@@ -34,35 +36,44 @@ router.get("/kpi/user/:userId", getUserKPIData);
 // GET /api/daily-tasks/kpi/all - Get KPI data for all users
 router.get("/kpi/all", getAllUsersKPIData);
 
-// GET /api/daily-tasks/:id - Get daily task by ID
-router.get("/:id", getDailyTaskById);
+// Escalation routes (must come before /:id to avoid conflicts)
+// GET /api/daily-tasks/escalated/:userId - Get escalated tasks for a user
+router.get("/escalated/:userId", getEscalatedTasks);
+
+// GET /api/daily-tasks/escalated-by/:userId - Get tasks escalated by a user
+router.get("/escalated-by/:userId", getTasksEscalatedByUser);
 
 // GET /api/daily-tasks/user/:userId - Get daily tasks by user
 router.get("/user/:userId", getDailyTasksByUser);
 
-// POST /api/daily-tasks - Create new daily task
-router.post("/", createDailyTask);
+// Progress routes (must come before /:id routes)
+// POST /api/daily-tasks/:id/progress - Add progress update to a task
+router.post("/:id/progress", addTaskProgress);
 
-// PUT /api/daily-tasks/:id - Update daily task
-router.put("/:id", updateDailyTask);
+// GET /api/daily-tasks/:id/progress - Get progress history for a task
+router.get("/:id/progress", getTaskProgress);
 
+// Specific :id routes with sub-paths
 // PUT /api/daily-tasks/:id/status - Update daily task status
 router.put("/:id/status", updateDailyTaskStatus);
 
-// DELETE /api/daily-tasks/:id - Delete daily task
-router.delete("/:id", deleteDailyTask);
-
-// Escalation routes
 // POST /api/daily-tasks/:id/escalate - Escalate task to another user
 router.post("/:id/escalate", escalateTask);
 
 // POST /api/daily-tasks/:id/rollback - Rollback escalated task
 router.post("/:id/rollback", rollbackTask);
 
-// GET /api/daily-tasks/escalated/:userId - Get escalated tasks for a user
-router.get("/escalated/:userId", getEscalatedTasks);
+// Generic :id routes (must come last)
+// GET /api/daily-tasks/:id - Get daily task by ID
+router.get("/:id", getDailyTaskById);
 
-// GET /api/daily-tasks/escalated-by/:userId - Get tasks escalated by a user
-router.get("/escalated-by/:userId", getTasksEscalatedByUser);
+// PUT /api/daily-tasks/:id - Update daily task
+router.put("/:id", updateDailyTask);
+
+// DELETE /api/daily-tasks/:id - Delete daily task
+router.delete("/:id", deleteDailyTask);
+
+// POST /api/daily-tasks - Create new daily task
+router.post("/", createDailyTask);
 
 module.exports = router;

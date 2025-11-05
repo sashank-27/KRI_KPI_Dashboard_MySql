@@ -122,37 +122,60 @@ app.get("/", (req, res) => {
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
-  console.log('✅ User connected:', socket.id);
-  console.log('📊 Total connections:', io.engine.clientsCount);
+  console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('✅ NEW SOCKET CONNECTION');
+  console.log('   Socket ID:', socket.id);
+  console.log('   Transport:', socket.conn.transport.name);
+  console.log('   Total Connections:', io.engine.clientsCount);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
   
   // Join admin room for real-time updates
   socket.on('join-admin-room', () => {
     socket.join('admin-room');
-    console.log('✅ User joined admin room:', socket.id);
+    console.log('👥 Socket', socket.id, 'joined admin-room');
+    const roomSize = io.sockets.adapter.rooms.get('admin-room')?.size || 0;
+    console.log('📊 Admin room now has', roomSize, 'members');
     // Send confirmation
-    socket.emit('admin-room-joined', { message: 'Successfully joined admin room' });
+    socket.emit('admin-room-joined', { 
+      message: 'Successfully joined admin room',
+      socketId: socket.id,
+      roomSize: roomSize
+    });
   });
 
   // Join user-specific room for escalated tasks
   socket.on('join-user-room', (userId) => {
-    socket.join(`user-${userId}`);
-    console.log('✅ User joined user room:', socket.id, 'for user:', userId);
+    const roomName = `user-${userId}`;
+    socket.join(roomName);
+    console.log('👤 Socket', socket.id, 'joined', roomName);
+    const roomSize = io.sockets.adapter.rooms.get(roomName)?.size || 0;
+    console.log('📊', roomName, 'now has', roomSize, 'members');
   });
   
   // Leave admin room
   socket.on('leave-admin-room', () => {
     socket.leave('admin-room');
-    console.log('❌ User left admin room:', socket.id);
+    console.log('👋 Socket', socket.id, 'left admin-room');
+    const roomSize = io.sockets.adapter.rooms.get('admin-room')?.size || 0;
+    console.log('📊 Admin room now has', roomSize, 'members');
   });
 
-  
   socket.on('disconnect', (reason) => {
-    console.log('❌ User disconnected:', socket.id, 'Reason:', reason);
-    console.log('📊 Remaining connections:', io.engine.clientsCount);
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('❌ SOCKET DISCONNECTED');
+    console.log('   Socket ID:', socket.id);
+    console.log('   Reason:', reason);
+    console.log('   Remaining Connections:', io.engine.clientsCount);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
   });
 
   socket.on('error', (error) => {
-    console.error('💥 Socket error:', error);
+    console.error('💥 Socket error on', socket.id, ':', error);
+  });
+
+  // Handle transport upgrade
+  socket.conn.on('upgrade', (transport) => {
+    console.log('🔄 Socket', socket.id, 'upgraded to', transport.name);
   });
 });
 
@@ -171,6 +194,18 @@ connectDB().then(async () => {
   console.log("✅ Database connected, setting up associations...");
   setupAssociations();
   console.log("✅ Database associations setup completed");
+  
+  // Run task_progress migration
+  console.log("🔧 Running task_progress table migration...");
+  try {
+    const { migrateTaskProgress } = require("./migrations/add-task-progress-table");
+    await migrateTaskProgress();
+    console.log("✅ Task progress migration completed");
+  } catch (error) {
+    console.error("⚠️  Task progress migration error:", error.message);
+    console.log("   (This is okay if table already exists)");
+  }
+  
   console.log("🔧 Running complete database setup...");
   const admin = new DatabaseAdmin();
   await admin.setupComplete();
