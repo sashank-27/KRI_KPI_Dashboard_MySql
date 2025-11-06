@@ -43,6 +43,18 @@ import { getAuthHeaders, requireAuth } from "@/lib/auth";
 import { User as UserType, Department } from "@/lib/types";
 import { getApiBaseUrl } from "@/lib/api";
 
+interface KPIBreakdown {
+  directCompleted: number;
+  directCredits: number;
+  sharedTasks: number;
+  sharedCredits: number;
+  escalatedAway: number;
+  escalatedAwayCredits: number;
+  receivedEscalated: number;
+  receivedEscalatedCredits: number;
+  totalCredits: number;
+}
+
 interface KPIData {
   userId: string;
   userName: string;
@@ -50,21 +62,19 @@ interface KPIData {
   department: string;
   total: number;
   closed: number;
-  open: number;
-  pending: number;
+  inProgress: number;
   escalated: number;
   completionRate?: number;
-  penalizedRate?: number;
+  breakdown?: KPIBreakdown;
 }
 
 interface UserKPIData {
   total: number;
   closed: number;
-  open: number;
-  pending: number;
+  inProgress: number;
   escalated: number;
   completionRate: string;
-  penalizedRate: string;
+  breakdown?: KPIBreakdown;
 }
 
 export default function KPIDashboard() {
@@ -268,13 +278,13 @@ export default function KPIDashboard() {
       "User Name",
       "Email",
       "Department",
-      "Total",
-      "Closed",
-      "Open",
-      "Pending",
-      "Escalated",
-      "KPI % (Closed/Total)",
-      "KPI % (Penalized)"
+      "Total Tasks",
+      "Total Credits",
+      "Direct Credits",
+      "Shared Credits",
+      "Escalated Away Credits",
+      "Received Credits",
+      "KPI %"
     ];
 
     const csvContent = [
@@ -284,12 +294,12 @@ export default function KPIDashboard() {
         item.userEmail || "N/A",
         item.department || "N/A",
         item.total || 0,
-        item.closed || 0,
-        item.open || 0,
-        item.pending || 0,
-        item.escalated || 0,
-        item.completionRate || 0,
-        item.penalizedRate || 0
+        item.breakdown?.totalCredits?.toFixed(2) || 0,
+        item.breakdown?.directCredits?.toFixed(2) || 0,
+        item.breakdown?.sharedCredits?.toFixed(2) || 0,
+        item.breakdown?.escalatedAwayCredits?.toFixed(2) || 0,
+        item.breakdown?.receivedEscalatedCredits?.toFixed(2) || 0,
+        item.completionRate || 0
       ].join(","))
     ].join("\n");
 
@@ -371,7 +381,7 @@ export default function KPIDashboard() {
                   {users.length > 0 ? (
                     users.map((user) => (
                       <SelectItem key={user.id} value={user.id}>
-                        {user.name} ({user.email})
+                        {user.name} 
                       </SelectItem>
                     ))
                   ) : (
@@ -487,7 +497,7 @@ export default function KPIDashboard() {
 
       {/* KPI Cards for Single User */}
       {selectedUser !== "all" && userKpiData && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total</CardTitle>
@@ -510,21 +520,11 @@ export default function KPIDashboard() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Open</CardTitle>
+              <CardTitle className="text-sm font-medium">In Progress</CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{userKpiData.open}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending</CardTitle>
-              <AlertCircle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{userKpiData.pending}</div>
+              <div className="text-2xl font-bold">{userKpiData.inProgress}</div>
             </CardContent>
           </Card>
 
@@ -542,10 +542,10 @@ export default function KPIDashboard() {
 
       {/* KPI Performance Cards */}
       {selectedUser !== "all" && userKpiData && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">KPI % (Closed/Total)</CardTitle>
+              <CardTitle className="text-sm font-medium">KPI % (Credits/Total)</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -558,22 +558,99 @@ export default function KPIDashboard() {
               </Badge>
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">KPI % (Penalized)</CardTitle>
-              <TrendingDown className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className={`text-2xl font-bold ${getPerformanceColor(parseFloat(userKpiData.penalizedRate))}`}>
-                {userKpiData.penalizedRate}%
-              </div>
-              <p className="text-xs text-muted-foreground">
-                (Closed - Escalated) / Total
-              </p>
-            </CardContent>
-          </Card>
         </div>
+      )}
+
+      {/* KPI Breakdown Cards */}
+      {selectedUser !== "all" && userKpiData && userKpiData.breakdown && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Credit Breakdown
+            </CardTitle>
+            <CardDescription>
+              Detailed breakdown of how your KPI credits are calculated. 
+              <br />
+              <span className="text-xs text-amber-600 dark:text-amber-400">
+                ℹ️ Note: Shared credits are calculated based on users working on the same SR-ID within the selected time period.
+              </span>
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Direct Credits */}
+              <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-950">
+                <div className="text-sm font-medium text-muted-foreground mb-1">Direct Completed</div>
+                <div className="text-2xl font-bold text-blue-700 dark:text-blue-400">
+                  {userKpiData.breakdown.directCredits.toFixed(2)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {userKpiData.breakdown.directCompleted} tasks × 1.0 credit
+                </p>
+              </div>
+
+              {/* Shared Credits */}
+              <div className="p-4 border rounded-lg bg-purple-50 dark:bg-purple-950">
+                <div className="text-sm font-medium text-muted-foreground mb-1">Shared (Multi-User)</div>
+                <div className="text-2xl font-bold text-purple-700 dark:text-purple-400">
+                  {userKpiData.breakdown.sharedCredits.toFixed(2)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {userKpiData.breakdown.sharedTasks} tasks × shared credit
+                  <br />
+                  <span className="text-[10px]">Credit split equally with other users on same SR-ID</span>
+                </p>
+              </div>
+
+              {/* Escalated Away Credits */}
+              <div className="p-4 border rounded-lg bg-orange-50 dark:bg-orange-950">
+                <div className="text-sm font-medium text-muted-foreground mb-1">Escalated Away</div>
+                <div className="text-2xl font-bold text-orange-700 dark:text-orange-400">
+                  {userKpiData.breakdown.escalatedAwayCredits.toFixed(2)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {userKpiData.breakdown.escalatedAway} tasks × 0.5 credit
+                  <br />
+                  <span className="text-[10px]">Tasks you started and escalated to others who completed them</span>
+                </p>
+              </div>
+
+              {/* Received Escalated Credits */}
+              <div className="p-4 border rounded-lg bg-green-50 dark:bg-green-950">
+                <div className="text-sm font-medium text-muted-foreground mb-1">Received & Completed</div>
+                <div className="text-2xl font-bold text-green-700 dark:text-green-400">
+                  {userKpiData.breakdown.receivedEscalatedCredits.toFixed(2)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {userKpiData.breakdown.receivedEscalated} tasks × 0.5 credit
+                  <br />
+                  <span className="text-[10px]">Tasks escalated to you that you completed</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Total Credits Summary */}
+            <div className="mt-4 p-4 border-2 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground">Total Credits Earned</div>
+                  <div className="text-3xl font-bold mt-1">{userKpiData.breakdown.totalCredits.toFixed(2)}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-medium text-muted-foreground">Out of Total Tasks</div>
+                  <div className="text-3xl font-bold mt-1">{userKpiData.total}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-medium text-muted-foreground">KPI Percentage</div>
+                  <div className={`text-3xl font-bold mt-1 ${getPerformanceColor(parseFloat(userKpiData.completionRate))}`}>
+                    {userKpiData.completionRate}%
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* KPI Table */}
@@ -629,12 +706,11 @@ export default function KPIDashboard() {
                   <TableHead>User</TableHead>
                   <TableHead>Department</TableHead>
                   <TableHead>Total</TableHead>
-                  <TableHead>Closed</TableHead>
-                  <TableHead>Open</TableHead>
-                  <TableHead>Pending</TableHead>
+                  <TableHead>Credits</TableHead>
+                  <TableHead>Direct</TableHead>
+                  <TableHead>Shared</TableHead>
                   <TableHead>Escalated</TableHead>
-                  <TableHead>KPI % (Closed/Total)</TableHead>
-                  <TableHead>KPI % (Penalized)</TableHead>
+                  <TableHead>KPI %</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -652,25 +728,38 @@ export default function KPIDashboard() {
                           {user.department || 'N/A'}
                         </TableCell>
                         <TableCell>{user.total || 0}</TableCell>
-                        <TableCell>{user.closed || 0}</TableCell>
-                        <TableCell>{user.open || 0}</TableCell>
-                        <TableCell>{user.pending || 0}</TableCell>
-                        <TableCell>{user.escalated || 0}</TableCell>
+                        <TableCell>
+                          <div className="font-semibold text-blue-600 dark:text-blue-400">
+                            {user.breakdown?.totalCredits.toFixed(2) || '0.00'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {user.breakdown?.directCredits.toFixed(1) || '0.0'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {user.breakdown?.sharedCredits.toFixed(1) || '0.0'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <span className="text-orange-600">↑{user.breakdown?.escalatedAwayCredits.toFixed(1) || '0.0'}</span>
+                            {' / '}
+                            <span className="text-green-600">↓{user.breakdown?.receivedEscalatedCredits.toFixed(1) || '0.0'}</span>
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <Badge className={getPerformanceBadge(user.completionRate || 0)}>
                             {(user.completionRate || 0).toFixed(2)}%
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getPerformanceBadge(user.penalizedRate || 0)}>
-                            {(user.penalizedRate || 0).toFixed(2)}%
                           </Badge>
                         </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground">
                         No KPI data available for the selected filters
                       </TableCell>
                     </TableRow>
@@ -696,24 +785,37 @@ export default function KPIDashboard() {
                       })()}
                     </TableCell>
                     <TableCell>{userKpiData.total || 0}</TableCell>
-                    <TableCell>{userKpiData.closed || 0}</TableCell>
-                    <TableCell>{userKpiData.open || 0}</TableCell>
-                    <TableCell>{userKpiData.pending || 0}</TableCell>
-                    <TableCell>{userKpiData.escalated || 0}</TableCell>
+                    <TableCell>
+                      <div className="font-semibold text-blue-600 dark:text-blue-400">
+                        {userKpiData.breakdown?.totalCredits.toFixed(2) || '0.00'}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {userKpiData.breakdown?.directCredits.toFixed(1) || '0.0'}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {userKpiData.breakdown?.sharedCredits.toFixed(1) || '0.0'}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        <span className="text-orange-600">↑{userKpiData.breakdown?.escalatedAwayCredits.toFixed(1) || '0.0'}</span>
+                        {' / '}
+                        <span className="text-green-600">↓{userKpiData.breakdown?.receivedEscalatedCredits.toFixed(1) || '0.0'}</span>
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <Badge className={getPerformanceBadge(parseFloat(userKpiData.completionRate) || 0)}>
                         {userKpiData.completionRate || '0.00'}%
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      <Badge className={getPerformanceBadge(parseFloat(userKpiData.penalizedRate) || 0)}>
-                        {userKpiData.penalizedRate || '0.00'}%
-                      </Badge>
-                    </TableCell>
                   </TableRow>
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground">
                       {selectedUser === "all" ? "No data available" : "No user data available"}
                     </TableCell>
                   </TableRow>

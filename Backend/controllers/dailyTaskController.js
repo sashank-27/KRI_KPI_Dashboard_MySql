@@ -336,7 +336,7 @@ const createDailyTask = async (req, res) => {
     // Create new daily task
     const taskData = {
       task,
-      srId,
+      srId: srId ? srId.toUpperCase().trim() : null, // Normalize SR-ID to uppercase
       remarks,
       status,
       date: date ? new Date(date) : new Date(),
@@ -344,7 +344,6 @@ const createDailyTask = async (req, res) => {
       departmentId, // Use the current user's department
       tags: Array.isArray(tags) ? tags : [],
       createdById: req.user.id,
-      originalUserId: req.user.id, // Set original user for escalation tracking
     };
     
     console.log("Creating task with data:", taskData);
@@ -387,6 +386,11 @@ const updateDailyTask = async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = { ...req.body };
+
+    // Normalize SR-ID to uppercase if provided
+    if (updateData.srId) {
+      updateData.srId = updateData.srId.toUpperCase().trim();
+    }
 
     // Remove undefined fields
     Object.keys(updateData).forEach(
@@ -797,58 +801,163 @@ const getUserKPIData = async (req, res) => {
     const { userId } = req.params;
     const { year, month, dateFrom, dateTo } = req.query;
     
-    let whereClause = { userId: userId };
-    
-    // Add date filters
+    // Build date filter (use UTC for timezone consistency)
+    let dateFilter = {};
     if (year && month) {
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0, 23, 59, 59);
-      whereClause.date = {
+      const startDate = new Date(Date.UTC(year, month - 1, 1));
+      const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59));
+      dateFilter = {
+        [Op.gte]: startDate,
+        [Op.lte]: endDate
+      };
+    } else if (year) {
+      const startDate = new Date(Date.UTC(year, 0, 1));
+      const endDate = new Date(Date.UTC(year, 11, 31, 23, 59, 59));
+      dateFilter = {
         [Op.gte]: startDate,
         [Op.lte]: endDate
       };
     } else if (dateFrom && dateTo) {
-      whereClause.date = {
+      dateFilter = {
         [Op.gte]: new Date(dateFrom),
         [Op.lte]: new Date(dateTo)
       };
     }
 
-    // Get task statistics
-    const totalTasks = await DailyTask.count({ where: whereClause });
-    
-    const completedTasks = await DailyTask.count({
-      where: { ...whereClause, status: 'closed' }
-    });
-    
-    const pendingTasks = await DailyTask.count({
-      where: { ...whereClause, status: 'in-progress' }
-    });
-
-    // Get escalation data
-    const escalatedTasks = await DailyTask.count({
-      where: { ...whereClause, isEscalated: true }
+    // 1. Get all tasks assigned to this user (including those they originally owned)
+    const allUserTasks = await DailyTask.findAll({
+      where: {
+        [Op.or]: [
+          { userId: userId },
+          { originalUserId: userId }
+        ],
+        ...(Object.keys(dateFilter).length > 0 ? { date: dateFilter } : {})
+      },
+      attributes: ['id', 'srId', 'status', 'isEscalated', 'userId', 'originalUserId']
     });
 
-    const tasksEscalatedByUser = await DailyTask.count({
-      where: { escalatedById: userId, isEscalated: true }
-    });
+    const total = allUserTasks.length;
+
+    // 2. Direct completions (not escalated, completed by this user)
+    const directCompletedTasks = allUserTasks.filter(task => 
+      task.userId === parseInt(userId) && 
+      task.status === 'closed' && 
+      !task.isEscalated
+    );
+    const directCompleted = directCompletedTasks.length;
+    const directCredits = directCompleted * 1.0;
+
+    // 3. Escalated away (original owner was this user, escalated and completed by someone else)
+    const escalatedAwayTasks = allUserTasks.filter(task =>
+      task.originalUserId === parseInt(userId) &&
+      task.userId !== parseInt(userId) &&
+      task.isEscalated === true &&
+      task.status === 'closed'
+    );
+    const escalatedAway = escalatedAwayTasks.length;
+    const escalatedAwayCredits = escalatedAway * 0.5;
+
+    // 4. Received escalated (received from another user and completed)
+    const receivedEscalatedTasks = allUserTasks.filter(task =>
+      task.userId === parseInt(userId) &&
+      task.originalUserId && task.originalUserId !== parseInt(userId) &&
+      task.isEscalated === true &&
+      task.status === 'closed'
+    );
+    const receivedEscalated = receivedEscalatedTasks.length;
+    const receivedEscalatedCredits = receivedEscalated * 0.5;
+
+    // 5. Multi-user SR-ID tasks (shared credit calculation)
+    // Get all closed tasks with SR-IDs
+    const closedTasksWithSrId = allUserTasks.filter(task =>
+      task.srId && 
+      task.status === 'closed' &&
+      !task.isEscalated && // Don't double count escalated tasks
+      task.userId === parseInt(userId)
+    );
+
+    let sharedCredits = 0;
+    let sharedTasksCount = 0;
+
+    if (closedTasksWithSrId.length > 0) {
+      // PERFORMANCE OPTIMIZATION: Batch query instead of N+1 queries
+      // Get all unique SR-IDs
+      const uniqueSrIds = [...new Set(closedTasksWithSrId.map(task => 
+        task.srId.toUpperCase().trim()
+      ))];
+
+      // Get user counts for ALL SR-IDs in ONE query
+      const srIdUserCounts = await DailyTask.findAll({
+        where: {
+          srId: { [Op.in]: uniqueSrIds },
+          ...(Object.keys(dateFilter).length > 0 ? { date: dateFilter } : {})
+        },
+        attributes: [
+          'srId',
+          [fn('COUNT', fn('DISTINCT', col('userId'))), 'userCount']
+        ],
+        group: ['srId'],
+        raw: true
+      });
+
+      // Build a map for O(1) lookups
+      const srIdMap = new Map();
+      srIdUserCounts.forEach(row => {
+        srIdMap.set(row.srId.toUpperCase().trim(), parseInt(row.userCount));
+      });
+
+      // Process each unique SR-ID
+      const processedSrIds = new Set();
+      for (const task of closedTasksWithSrId) {
+        const normalizedSrId = task.srId.toUpperCase().trim();
+        
+        if (!processedSrIds.has(normalizedSrId)) {
+          processedSrIds.add(normalizedSrId);
+          
+          const usersOnThisSrId = srIdMap.get(normalizedSrId) || 1;
+
+          if (usersOnThisSrId > 1) {
+            // This is a multi-user SR-ID - shared credit
+            const creditShare = 1.0 / usersOnThisSrId;
+            sharedCredits += creditShare;
+            sharedTasksCount++;
+          }
+        }
+      }
+    }
+
+    // Adjust direct credits to exclude multi-user tasks (they're counted in sharedCredits)
+    const adjustedDirectCompleted = directCompleted - sharedTasksCount;
+    const adjustedDirectCredits = adjustedDirectCompleted * 1.0;
+
+    // Calculate total credits
+    const totalCredits = adjustedDirectCredits + sharedCredits + escalatedAwayCredits + receivedEscalatedCredits;
+
+    // Count status for display (Note: DB only has 'in-progress' and 'closed')
+    const inProgress = allUserTasks.filter(task => task.status === 'in-progress').length;
+    const closed = allUserTasks.filter(task => task.status === 'closed').length;
+    const escalated = allUserTasks.filter(task => task.isEscalated === true).length;
 
     // Calculate performance metrics
-    const completionRate = totalTasks > 0 ? ((completedTasks / totalTasks) * 100).toFixed(2) : 0;
-    const escalationRate = totalTasks > 0 ? ((escalatedTasks / totalTasks) * 100).toFixed(2) : 0;
+    const completionRate = total > 0 ? ((totalCredits / total) * 100).toFixed(2) : "0.00";
 
     res.json({
-      userId,
-      period: { year, month, dateFrom, dateTo },
-      metrics: {
-        totalTasks,
-        completedTasks,
-        pendingTasks,
-        escalatedTasks,
-        tasksEscalatedByUser,
-        completionRate: parseFloat(completionRate),
-        escalationRate: parseFloat(escalationRate),
+      total,
+      closed,
+      inProgress,
+      escalated,
+      completionRate,
+      // Breakdown for display
+      breakdown: {
+        directCompleted: adjustedDirectCompleted,
+        directCredits: parseFloat(adjustedDirectCredits.toFixed(2)),
+        sharedTasks: sharedTasksCount,
+        sharedCredits: parseFloat(sharedCredits.toFixed(2)),
+        escalatedAway: escalatedAway,
+        escalatedAwayCredits: parseFloat(escalatedAwayCredits.toFixed(2)),
+        receivedEscalated: receivedEscalated,
+        receivedEscalatedCredits: parseFloat(receivedEscalatedCredits.toFixed(2)),
+        totalCredits: parseFloat(totalCredits.toFixed(2))
       }
     });
 
@@ -997,88 +1106,179 @@ const getAllUsersKPIData = async (req, res) => {
   try {
     const { year, month, dateFrom, dateTo } = req.query;
     
-    let whereClause = {};
-    
-    // Add date filters
+    // Build date filter (use UTC for timezone consistency)
+    let dateFilter = {};
     if (year && month) {
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0, 23, 59, 59);
-      whereClause.date = {
+      const startDate = new Date(Date.UTC(year, month - 1, 1));
+      const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59));
+      dateFilter = {
         [Op.gte]: startDate,
         [Op.lte]: endDate
       };
     } else if (year) {
-      const startDate = new Date(year, 0, 1);
-      const endDate = new Date(year, 11, 31, 23, 59, 59);
-      whereClause.date = {
+      const startDate = new Date(Date.UTC(year, 0, 1));
+      const endDate = new Date(Date.UTC(year, 11, 31, 23, 59, 59));
+      dateFilter = {
         [Op.gte]: startDate,
         [Op.lte]: endDate
       };
     } else if (dateFrom && dateTo) {
-      whereClause.date = {
+      dateFilter = {
         [Op.gte]: new Date(dateFrom),
         [Op.lte]: new Date(dateTo)
       };
     }
 
-    console.log('KPI Query filters:', { year, month, dateFrom, dateTo, whereClause });
+    console.log('KPI Query filters:', { year, month, dateFrom, dateTo, dateFilter });
 
-    // Get user-wise statistics with department info
-    const userStats = await DailyTask.findAll({
-      where: whereClause,
-      include: [
-        {
-          model: User,
-          as: 'user',
-          attributes: ['id', 'name', 'email'],
-          include: [{
-            model: Department,
-            as: 'department',
-            attributes: ['id', 'name']
-          }]
-        }
-      ],
-      attributes: [
-        'userId',
-        [fn('COUNT', col('DailyTask.id')), 'total'],
-        [fn('SUM', literal("CASE WHEN status = 'closed' THEN 1 ELSE 0 END")), 'closed'],
-        [fn('SUM', literal("CASE WHEN status = 'open' THEN 1 ELSE 0 END")), 'open'],
-        [fn('SUM', literal("CASE WHEN status = 'pending' THEN 1 ELSE 0 END")), 'pending'],
-        [fn('SUM', literal("CASE WHEN isEscalated = 1 THEN 1 ELSE 0 END")), 'escalated'],
-      ],
-      group: ['userId', 'user.id', 'user.name', 'user.email', 'user.department.id', 'user.department.name']
+    // Get all users who have tasks
+    const allUsers = await User.findAll({
+      include: [{
+        model: Department,
+        as: 'department',
+        attributes: ['id', 'name']
+      }],
+      attributes: ['id', 'name', 'email']
     });
 
-    console.log('Raw user stats:', JSON.stringify(userStats, null, 2));
+    // Get all tasks for the date range
+    const allTasks = await DailyTask.findAll({
+      where: Object.keys(dateFilter).length > 0 ? { date: dateFilter } : {},
+      attributes: ['id', 'srId', 'status', 'isEscalated', 'userId', 'originalUserId']
+    });
 
-    // Format the data to match frontend expectations
-    const formattedStats = userStats.map(stat => {
-      const total = parseInt(stat.dataValues.total) || 0;
-      const closed = parseInt(stat.dataValues.closed) || 0;
-      const open = parseInt(stat.dataValues.open) || 0;
-      const pending = parseInt(stat.dataValues.pending) || 0;
-      const escalated = parseInt(stat.dataValues.escalated) || 0;
-      
-      const completionRate = total > 0 ? parseFloat(((closed / total) * 100).toFixed(2)) : 0;
-      const penalizedRate = total > 0 ? parseFloat((((closed - escalated) / total) * 100).toFixed(2)) : 0;
-      
+    // Calculate KPI for each user
+    const formattedStats = await Promise.all(allUsers.map(async (user) => {
+      const userId = user.id;
+
+      // Get all tasks for this user (including those they originally owned)
+      const userTasks = allTasks.filter(task =>
+        task.userId === userId || task.originalUserId === userId
+      );
+
+      if (userTasks.length === 0) {
+        // Skip users with no tasks
+        return null;
+      }
+
+      const total = userTasks.length;
+
+      // 1. Direct completions (not escalated)
+      const directCompletedTasks = userTasks.filter(task =>
+        task.userId === userId &&
+        task.status === 'closed' &&
+        !task.isEscalated
+      );
+
+      // 2. Escalated away (completed by someone else)
+      const escalatedAwayTasks = userTasks.filter(task =>
+        task.originalUserId === userId &&
+        task.userId !== userId &&
+        task.isEscalated === true &&
+        task.status === 'closed'
+      );
+      const escalatedAwayCredits = escalatedAwayTasks.length * 0.5;
+
+      // 3. Received escalated (completed)
+      const receivedEscalatedTasks = userTasks.filter(task =>
+        task.userId === userId &&
+        task.originalUserId && task.originalUserId !== userId &&
+        task.isEscalated === true &&
+        task.status === 'closed'
+      );
+      const receivedEscalatedCredits = receivedEscalatedTasks.length * 0.5;
+
+      // 4. Multi-user SR-ID tasks (shared credit)
+      const closedTasksWithSrId = directCompletedTasks.filter(task => task.srId);
+      let sharedCredits = 0;
+      let sharedTasksCount = 0;
+
+      if (closedTasksWithSrId.length > 0) {
+        // PERFORMANCE OPTIMIZATION: Pre-calculate SR-ID user counts
+        // Build a map of SR-ID to user count for all tasks (do this once)
+        const srIdUserCountMap = new Map();
+        
+        allTasks.forEach(task => {
+          if (task.srId) {
+            const normalizedSrId = task.srId.toUpperCase().trim();
+            if (!srIdUserCountMap.has(normalizedSrId)) {
+              srIdUserCountMap.set(normalizedSrId, new Set());
+            }
+            srIdUserCountMap.get(normalizedSrId).add(task.userId);
+          }
+        });
+
+        // Convert Set sizes to actual counts
+        const srIdCounts = new Map();
+        srIdUserCountMap.forEach((userSet, srId) => {
+          srIdCounts.set(srId, userSet.size);
+        });
+
+        // Process each unique SR-ID for this user
+        const processedSrIds = new Set();
+        for (const task of closedTasksWithSrId) {
+          const normalizedSrId = task.srId.toUpperCase().trim();
+          
+          if (!processedSrIds.has(normalizedSrId)) {
+            processedSrIds.add(normalizedSrId);
+
+            const usersOnThisSrId = srIdCounts.get(normalizedSrId) || 1;
+
+            if (usersOnThisSrId > 1) {
+              // Multi-user SR-ID - shared credit
+              const creditShare = 1.0 / usersOnThisSrId;
+              sharedCredits += creditShare;
+              sharedTasksCount++;
+            }
+          }
+        }
+      }
+
+      // Adjust direct credits (exclude multi-user tasks)
+      const adjustedDirectCompleted = directCompletedTasks.length - sharedTasksCount;
+      const adjustedDirectCredits = adjustedDirectCompleted * 1.0;
+
+      // Calculate total credits
+      const totalCredits = adjustedDirectCredits + sharedCredits + escalatedAwayCredits + receivedEscalatedCredits;
+
+      // Count statuses (Note: DB only has 'in-progress' and 'closed')
+      const closed = userTasks.filter(task => task.status === 'closed').length;
+      const inProgress = userTasks.filter(task => task.status === 'in-progress').length;
+      const escalated = userTasks.filter(task => task.isEscalated === true).length;
+
+      // Calculate completion rate
+      const completionRate = total > 0 ? parseFloat(((totalCredits / total) * 100).toFixed(2)) : 0;
+
       return {
-        userId: stat.userId,
-        userName: stat.user?.name || 'Unknown User',
-        userEmail: stat.user?.email || 'No email',
-        department: stat.user?.department?.name || 'N/A',
+        userId: userId,
+        userName: user.name || 'Unknown User',
+        userEmail: user.email || 'No email',
+        department: user.department?.name || 'N/A',
         total,
         closed,
-        open,
-        pending,
+        inProgress,
         escalated,
         completionRate,
-        penalizedRate
+        // Breakdown for display
+        breakdown: {
+          directCompleted: adjustedDirectCompleted,
+          directCredits: parseFloat(adjustedDirectCredits.toFixed(2)),
+          sharedTasks: sharedTasksCount,
+          sharedCredits: parseFloat(sharedCredits.toFixed(2)),
+          escalatedAway: escalatedAwayTasks.length,
+          escalatedAwayCredits: parseFloat(escalatedAwayCredits.toFixed(2)),
+          receivedEscalated: receivedEscalatedTasks.length,
+          receivedEscalatedCredits: parseFloat(receivedEscalatedCredits.toFixed(2)),
+          totalCredits: parseFloat(totalCredits.toFixed(2))
+        }
       };
-    });
+    }));
 
-    console.log('Formatted KPI stats:', formattedStats);
-    res.json(formattedStats);
+    // Filter out null entries (users with no tasks)
+    const filteredStats = formattedStats.filter(stat => stat !== null);
+
+    console.log('Formatted KPI stats with breakdown:', filteredStats);
+    res.json(filteredStats);
 
   } catch (error) {
     console.error("Error fetching all users KPI data:", error);
@@ -1140,8 +1340,8 @@ const rollbackTask = async (req, res) => {
       escalationReason: '',
       isEscalated: false,
       // Restore original user
-      userId: currentTask.originalUserId,
-      originalUserId: null
+      userId: currentTask.originalUserId
+      // Keep originalUserId to preserve escalation history for future analytics
     };
 
     await DailyTask.update(updateData, { where: { id } });
