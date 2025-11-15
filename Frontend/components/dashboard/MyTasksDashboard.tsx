@@ -96,6 +96,11 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [hasMoreData, setHasMoreData] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [newTask, setNewTask] = useState<NewDailyTask>({
     task: "",
     srId: "",
@@ -182,10 +187,26 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
     fetchAllTasksForSRTracking();
   }, [currentUserId]);
 
-  const fetchUserTasks = async () => {
+  const fetchUserTasks = async (page = 1, limit = itemsPerPage, reset = false) => {
     try {
-      setIsLoading(true);
-      const res = await fetch(`${getApiBaseUrl()}/api/daily-tasks/user/${currentUserId}`, {
+      if (reset) {
+        setIsLoading(true);
+      } else {
+        setIsLoadingMore(true);
+      }
+
+      // Build query parameters
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+
+      // Add status filter if not 'all'
+      if (statusFilter && statusFilter !== 'all') {
+        params.append('status', statusFilter);
+      }
+      
+      const res = await fetch(`${getApiBaseUrl()}/api/daily-tasks/user/${currentUserId}?${params.toString()}`, {
         headers: getAuthHeaders(),
         credentials: "include",
       });
@@ -200,25 +221,52 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
       }
       
       const data = await res.json();
-      setTasks(Array.isArray(data.tasks) ? data.tasks : []);
+      const tasksData = Array.isArray(data.tasks) ? data.tasks : [];
+
+      // Deduplicate tasks by id
+      const deduplicateTasks = (tasks: DailyTask[]) => {
+        const seen = new Set();
+        return tasks.filter(task => {
+          if (seen.has(task.id)) {
+            return false;
+          }
+          seen.add(task.id);
+          return true;
+        });
+      };
+
+      if (reset || page === 1) {
+        setTasks(deduplicateTasks(tasksData));
+        setCurrentPage(1);
+      } else {
+        setTasks(prev => deduplicateTasks([...prev, ...tasksData]));
+      }
+
+      // Check if there's more data
+      setHasMoreData(tasksData.length === limit);
       
       // Calculate stats
       // Count escalated tasks that were escalated TO this user (where userRole is 'owner' and isEscalated is true)
       // Don't count tasks that this user escalated away (userRole is 'observer')
       const taskStats = {
-        total: data.tasks?.length || 0,
-        inProgress: data.tasks?.filter((task: DailyTask) => task.status === "in-progress").length || 0,
-        closed: data.tasks?.filter((task: DailyTask) => task.status === "closed").length || 0,
-        escalated: data.tasks?.filter((task: DailyTask) => 
+        total: data.total || tasksData.length,
+        inProgress: tasksData.filter((task: DailyTask) => task.status === "in-progress").length,
+        closed: tasksData.filter((task: DailyTask) => task.status === "closed").length,
+        escalated: tasksData.filter((task: DailyTask) => 
           task.isEscalated === true && task.userRole === 'owner'
-        ).length || 0, // Only count tasks escalated TO this user
+        ).length, // Only count tasks escalated TO this user
       };
-      setStats(taskStats);
+      
+      // Update stats only on initial load to show total count
+      if (reset || page === 1) {
+        setStats(taskStats);
+      }
     } catch (err) {
       console.error("Failed to fetch user daily tasks", err);
       setTasks([]);
     } finally {
       setIsLoading(false);
+      setIsLoadingMore(false);
     }
   };
 
@@ -246,6 +294,13 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
     }
   };
 
+  // Load more tasks
+  const loadMoreTasks = () => {
+    const nextPage = currentPage + 1;
+    setCurrentPage(nextPage);
+    fetchUserTasks(nextPage, itemsPerPage, false);
+  };
+
   // Simplified real-time event handler
   const handleRealtimeEvent = useCallback((data: any) => {
 
@@ -259,13 +314,13 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
     
     if (isRelevant) {
       
-      fetchUserTasks();
+      fetchUserTasks(1, itemsPerPage, true); // Reset to page 1 on updates
       // fetchEscalatedTasksCount(); // No longer needed
       fetchAllTasksForSRTracking();
     } else {
       
     }
-  }, [currentUserId]);
+  }, [currentUserId, itemsPerPage]);
 
   // Set up real-time event listeners with simplified approach
   useEffect(() => {
@@ -325,7 +380,7 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
           date: new Date().toISOString().split('T')[0],
           tags: [],
         });
-        fetchUserTasks(); // Refresh to update stats
+        fetchUserTasks(1, itemsPerPage, true); // Refresh to update stats and reset to page 1
       } catch (err) {
         console.error("Failed to create daily task", err);
         alert(`Failed to create daily task: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -355,7 +410,7 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
       
       const updated = await res.json();
       setTasks(tasks.map((task) => (task.id === updated.id ? updated : task)));
-      fetchUserTasks(); // Refresh the task list
+      fetchUserTasks(1, itemsPerPage, true); // Refresh the task list and reset to page 1
     } catch (err) {
       console.error("Failed to update task status", err);
       alert(`Failed to update task status: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -371,7 +426,7 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
     setCompleteTaskModalOpen(false);
     setTaskToComplete(null);
     if (refreshTasks) {
-      fetchUserTasks(); // Refresh the task list after completing with solution
+      fetchUserTasks(1, itemsPerPage, true); // Refresh the task list after completing with solution
     }
   };
 
@@ -394,7 +449,7 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
     setAddProgressModalOpen(false);
     setTaskForProgress(null);
     if (refreshTasks) {
-      fetchUserTasks(); // Refresh the task list after adding progress
+      fetchUserTasks(1, itemsPerPage, true); // Refresh the task list after adding progress
     }
   };
 
@@ -452,7 +507,7 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
       }
       
       // Refresh tasks to show updated data
-      fetchUserTasks();
+      fetchUserTasks(1, itemsPerPage, true); // Reset to page 1
       setEscalateDialogOpen(false);
       setTaskToEscalate(null);
       setEscalationReason("");
@@ -498,7 +553,7 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
       
       // Success - refresh tasks to show updated data
       alert('Task rolled back successfully!');
-      fetchUserTasks();
+      fetchUserTasks(1, itemsPerPage, true); // Reset to page 1
     } catch (err) {
       console.error("Failed to rollback task", err);
       alert(`Failed to rollback task: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -1070,6 +1125,43 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
                 Clear Filters
               </Button>
             )}
+          </motion.div>
+        )}
+
+        {/* Pagination Info and Load More Button */}
+        {filteredTasks.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="bg-white rounded-2xl border shadow-sm p-6"
+          >
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+              <div className="text-sm text-gray-600">
+                Showing {tasks.length} of {stats.total} tasks
+                {hasMoreData && ` (${itemsPerPage} per page)`}
+              </div>
+              {hasMoreData && (
+                <Button
+                  onClick={loadMoreTasks}
+                  disabled={isLoadingMore}
+                  variant="outline"
+                  className="rounded-2xl transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-md"
+                >
+                  {isLoadingMore ? (
+                    <>
+                      <RefreshCw className="animate-spin h-4 w-4 mr-2" />
+                      Loading...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Load More Tasks
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
           </motion.div>
         )}
       </div>
