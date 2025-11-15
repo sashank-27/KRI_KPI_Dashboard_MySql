@@ -180,10 +180,43 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
     }
   };
 
+  // Fetch user stats for all tasks (not just loaded ones)
+  const fetchUserStats = async () => {
+    try {
+      // Fetch all user tasks with a large limit to get accurate counts
+      // We use limit=9999 to get all tasks for stats calculation
+      const res = await fetch(`${getApiBaseUrl()}/api/daily-tasks/user/${currentUserId}?limit=9999`, {
+        headers: getAuthHeaders(),
+        credentials: "include",
+      });
+      
+      if (!res.ok) {
+        throw new Error(`Failed to fetch user stats: ${res.status}`);
+      }
+      
+      const data = await res.json();
+      const allUserTasks = Array.isArray(data.tasks) ? data.tasks : [];
+      
+      // Calculate accurate stats from ALL tasks
+      const taskStats = {
+        total: data.total || allUserTasks.length,
+        inProgress: allUserTasks.filter((task: DailyTask) => task.status === "in-progress").length,
+        closed: allUserTasks.filter((task: DailyTask) => task.status === "closed").length,
+        escalated: allUserTasks.filter((task: DailyTask) => 
+          task.isEscalated === true && task.userRole === 'owner'
+        ).length,
+      };
+      
+      setStats(taskStats);
+    } catch (err) {
+      console.error("Failed to fetch user stats", err);
+    }
+  };
+
   // Fetch user's daily tasks
   useEffect(() => {
-    fetchUserTasks();
-    // fetchEscalatedTasksCount(); // No longer needed - escalated count is calculated from main tasks
+    fetchUserTasks(1, itemsPerPage, true); // Fetch first page
+    fetchUserStats(); // Fetch stats for all tasks
     fetchAllTasksForSRTracking();
   }, [currentUserId]);
 
@@ -245,21 +278,25 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
       // Check if there's more data
       setHasMoreData(tasksData.length === limit);
       
-      // Calculate stats
-      // Count escalated tasks that were escalated TO this user (where userRole is 'owner' and isEscalated is true)
-      // Don't count tasks that this user escalated away (userRole is 'observer')
-      const taskStats = {
-        total: data.total || tasksData.length,
-        inProgress: tasksData.filter((task: DailyTask) => task.status === "in-progress").length,
-        closed: tasksData.filter((task: DailyTask) => task.status === "closed").length,
-        escalated: tasksData.filter((task: DailyTask) => 
-          task.isEscalated === true && task.userRole === 'owner'
-        ).length, // Only count tasks escalated TO this user
-      };
-      
-      // Update stats only on initial load to show total count
-      if (reset || page === 1) {
-        setStats(taskStats);
+      // Update stats - Always use the totals from the API response
+      // These represent ALL tasks, not just the loaded ones
+      if (data.total !== undefined) {
+        // Get stats from API response for accurate totals across all pages
+        const totalStats = {
+          total: data.total || 0,
+          inProgress: 0,
+          closed: 0,
+          escalated: 0
+        };
+
+        // If the API provides breakdown stats, use them
+        // Otherwise, we'll need to fetch all tasks or get stats from a separate endpoint
+        // For now, we'll update stats on first page load with full data
+        if (reset || page === 1) {
+          // We need to calculate total stats from ALL user tasks, not just loaded ones
+          // The backend returns total count, but we need to fetch stats separately
+          fetchUserStats();
+        }
       }
     } catch (err) {
       console.error("Failed to fetch user daily tasks", err);
@@ -315,7 +352,7 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
     if (isRelevant) {
       
       fetchUserTasks(1, itemsPerPage, true); // Reset to page 1 on updates
-      // fetchEscalatedTasksCount(); // No longer needed
+      fetchUserStats(); // Refresh stats for all tasks
       fetchAllTasksForSRTracking();
     } else {
       
@@ -381,6 +418,7 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
           tags: [],
         });
         fetchUserTasks(1, itemsPerPage, true); // Refresh to update stats and reset to page 1
+        fetchUserStats(); // Refresh stats for all tasks
       } catch (err) {
         console.error("Failed to create daily task", err);
         alert(`Failed to create daily task: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -411,6 +449,7 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
       const updated = await res.json();
       setTasks(tasks.map((task) => (task.id === updated.id ? updated : task)));
       fetchUserTasks(1, itemsPerPage, true); // Refresh the task list and reset to page 1
+      fetchUserStats(); // Refresh stats for all tasks
     } catch (err) {
       console.error("Failed to update task status", err);
       alert(`Failed to update task status: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -427,6 +466,7 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
     setTaskToComplete(null);
     if (refreshTasks) {
       fetchUserTasks(1, itemsPerPage, true); // Refresh the task list after completing with solution
+      fetchUserStats(); // Refresh stats for all tasks
     }
   };
 
@@ -450,6 +490,7 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
     setTaskForProgress(null);
     if (refreshTasks) {
       fetchUserTasks(1, itemsPerPage, true); // Refresh the task list after adding progress
+      fetchUserStats(); // Refresh stats for all tasks
     }
   };
 
@@ -508,6 +549,7 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
       
       // Refresh tasks to show updated data
       fetchUserTasks(1, itemsPerPage, true); // Reset to page 1
+      fetchUserStats(); // Refresh stats for all tasks
       setEscalateDialogOpen(false);
       setTaskToEscalate(null);
       setEscalationReason("");
@@ -554,6 +596,7 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
       // Success - refresh tasks to show updated data
       alert('Task rolled back successfully!');
       fetchUserTasks(1, itemsPerPage, true); // Reset to page 1
+      fetchUserStats(); // Refresh stats for all tasks
     } catch (err) {
       console.error("Failed to rollback task", err);
       alert(`Failed to rollback task: ${err instanceof Error ? err.message : 'Unknown error'}`);
