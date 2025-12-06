@@ -279,7 +279,7 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
       handleTaskStatusUpdated, handleTaskEscalated, handleTaskRolledBack, 
       handleStatsUpdate, handleTaskProgressAdded]);
 
-  // Debounce search term
+  // Debounce search term - removed backend fetch trigger since search is client-side only
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
@@ -288,15 +288,9 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Fetch tasks when search term changes
+  // Fetch ALL tasks from backend on initial load for proper search functionality
   useEffect(() => {
-    if (debouncedSearchTerm !== searchTerm) return; // Only fetch when debounced value matches current
-    fetchTasks(1, itemsPerPage, true);
-  }, [debouncedSearchTerm]);
-
-  // Fetch tasks from backend
-  useEffect(() => {
-    fetchTasks(1, itemsPerPage, true);
+    fetchTasks(1, 9999, true); // Load all tasks initially
     fetchStats();
   }, []);
 
@@ -356,10 +350,8 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
         limit: limit.toString(),
       });
       
-      // Add search term if provided
-      if (debouncedSearchTerm) {
-        params.append('search', debouncedSearchTerm);
-      }
+      // Note: Search is handled client-side for better name/user search support
+      // Backend search doesn't support user name searching
       
       // Add status filter if not 'all'
       if (statusFilter && statusFilter !== 'all') {
@@ -441,19 +433,19 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
   // Handle search and filter changes
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
-    setCurrentPage(1);
+    setCurrentPage(1); // Reset to page 1 when searching
   };
 
   const handleStatusFilterChange = (value: string) => {
     setStatusFilter(value);
     setCurrentPage(1);
-    fetchTasks(1, itemsPerPage, true);
+    fetchTasks(1, 9999, true); // Load all tasks with status filter
   };
 
   const handleDepartmentFilterChange = (value: string) => {
     setDepartmentFilter(value);
     setCurrentPage(1);
-    fetchTasks(1, itemsPerPage, true);
+    fetchTasks(1, 9999, true); // Load all tasks with department filter
   };
 
   const fetchStats = async () => {
@@ -784,14 +776,49 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
 
   // Filter tasks
   const filteredTasks = (tasks || []).filter((task) => {
-    const matchesSearch = (task.task?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-                         (task.remarks?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+    const searchLower = searchTerm.toLowerCase();
+    
+    // Extract user name from different possible fields
+    const getUserName = (userField: string | { id: string; name: string; email: string } | undefined): string => {
+      if (!userField) return '';
+      return typeof userField === 'string' ? userField : (userField.name || '');
+    };
+    
+    const userName = getUserName(task.user);
+    const createdByName = getUserName(task.createdBy);
+    const escalatedToName = getUserName(task.escalatedTo);
+    const escalatedByName = getUserName(task.escalatedBy);
+    const originalUserName = getUserName(task.originalUser);
+    
+    // Extract department name
+    const departmentName = typeof task.department === 'string' 
+      ? task.department 
+      : (task.department?.name || '');
+    
+    // Search in multiple fields
+    const matchesSearch = 
+      (task.task?.toLowerCase() || '').includes(searchLower) ||
+      (task.remarks?.toLowerCase() || '').includes(searchLower) ||
+      (task.srId?.toLowerCase() || '').includes(searchLower) ||
+      userName.toLowerCase().includes(searchLower) ||
+      createdByName.toLowerCase().includes(searchLower) ||
+      escalatedToName.toLowerCase().includes(searchLower) ||
+      escalatedByName.toLowerCase().includes(searchLower) ||
+      originalUserName.toLowerCase().includes(searchLower) ||
+      departmentName.toLowerCase().includes(searchLower);
+    
     const matchesStatus = statusFilter === "all" || task.status === statusFilter;
     const matchesDepartment = departmentFilter === "all" || 
       (typeof task.department === 'string' ? task.department === departmentFilter : task.department?.id === departmentFilter);
     
     return matchesSearch && matchesStatus && matchesDepartment;
   });
+
+  // Client-side pagination: slice the filtered tasks for display
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedTasks = filteredTasks.slice(startIndex, endIndex);
+  const totalFilteredPages = Math.ceil(filteredTasks.length / itemsPerPage);
 
   return (
     <>
@@ -918,7 +945,7 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
-                    placeholder="Search by task or remarks..."
+                    placeholder="Search by name, SR-ID, task, remarks, or department..."
                     value={searchTerm}
                     onChange={(e) => handleSearchChange(e.target.value)}
                     className="pl-10 transition-all duration-200 ease-in-out focus:scale-105 focus:shadow-md"
@@ -1091,7 +1118,7 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
                     ))
                   ) : (
                     <AnimatePresence>
-                      {Array.isArray(filteredTasks) && filteredTasks.length > 0 ? filteredTasks.map((task, idx) => (
+                      {Array.isArray(paginatedTasks) && paginatedTasks.length > 0 ? paginatedTasks.map((task, idx) => (
                       <motion.tr
                         key={`${task.id}-${idx}-${task.updatedAt || task.createdAt || Date.now()}`}
                         initial={{ opacity: 0, y: 20, scale: 0.98 }}
@@ -1316,33 +1343,36 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
               </TooltipProvider>
             </div>
             
-            {/* Pagination Info and Load More Button */}
+            {/* Pagination Info and Controls */}
             <div className="px-6 py-4 border-t bg-gray-50">
               <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                 <div className="text-sm text-gray-600">
-                  Showing {tasks.length} tasks
-                  {hasMoreData && ` (${itemsPerPage} per page)`}
+                  Showing {startIndex + 1}-{Math.min(endIndex, filteredTasks.length)} of {filteredTasks.length} tasks
+                  {tasks.length > filteredTasks.length && ` (filtered from ${tasks.length} total)`}
                 </div>
-                {hasMoreData && (
+                <div className="flex items-center gap-2">
                   <Button
-                    onClick={loadMoreTasks}
-                    disabled={isLoadingMore}
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
                     variant="outline"
+                    size="sm"
                     className="rounded-2xl transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-md"
                   >
-                    {isLoadingMore ? (
-                      <>
-                        <RefreshCw className="animate-spin h-4 w-4 mr-2" />
-                        Loading...
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Load More Tasks
-                      </>
-                    )}
+                    Previous
                   </Button>
-                )}
+                  <span className="text-sm text-gray-600 px-4">
+                    Page {currentPage} of {totalFilteredPages || 1}
+                  </span>
+                  <Button
+                    onClick={() => setCurrentPage(Math.min(totalFilteredPages, currentPage + 1))}
+                    disabled={currentPage >= totalFilteredPages}
+                    variant="outline"
+                    size="sm"
+                    className="rounded-2xl transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-md"
+                  >
+                    Next
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
