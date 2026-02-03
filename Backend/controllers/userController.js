@@ -359,6 +359,13 @@ exports.login = async (req, res) => {
   try {
     const { email, username, password } = req.body;
     
+    console.log('🔐 Login attempt:', { 
+      email, 
+      username, 
+      passwordLength: password?.length,
+      hasPassword: !!password 
+    });
+    
     // Accept either email or username for login
     const whereClause = {};
     if (email || username) {
@@ -370,18 +377,38 @@ exports.login = async (req, res) => {
     }
     
     const user = await User.findOne({ where: whereClause });
-    if (!user) return res.status(401).json({ error: "Invalid credentials" });
+    if (!user) {
+      console.log('❌ User not found with:', { email, username });
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+    
+    console.log('✅ User found:', { 
+      id: user.id, 
+      email: user.email, 
+      username: user.username, 
+      role: user.role,
+      hasStoredPassword: !!user.password,
+      storedPasswordLength: user.password?.length
+    });
     
     const valid = await bcrypt.compare(password, user.password);
-    if (!valid) return res.status(401).json({ error: "Invalid credentials" });
+    console.log('🔑 Password comparison result:', valid);
+    
+    if (!valid) {
+      console.log('❌ Invalid password for user:', user.email);
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
     
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
       getJwtSecret(),
       { expiresIn: "7d" }
     );
+    
+    console.log('✅ Login successful for:', user.email);
     res.json({ token });
   } catch (err) {
+    console.error('💥 Login error:', err);
     res.status(500).json({ error: "Server error", details: err.message });
   }
 };

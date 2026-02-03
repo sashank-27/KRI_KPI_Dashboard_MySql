@@ -12,7 +12,7 @@ const getDbConfig = () => {
       port: process.env.DB_PORT_PROD || 3306,
       name: process.env.DB_NAME_PROD || 'kri_kpi_dashboard',
       user: process.env.DB_USER_PROD || 'root',
-      password: process.env.DB_PASSWORD_PROD || 'netweb',
+      password: process.env.DB_PASSWORD_PROD !== undefined ? process.env.DB_PASSWORD_PROD : 'netweb',
       jwtSecret: process.env.JWT_SECRET_PROD || 'secretkey'
     };
   } else {
@@ -21,7 +21,7 @@ const getDbConfig = () => {
       port: process.env.DB_PORT_DEV || 3306,
       name: process.env.DB_NAME_DEV || 'kri_kpi_dashboard',
       user: process.env.DB_USER_DEV || 'root',
-      password: process.env.DB_PASSWORD_DEV || 'netweb',
+      password: process.env.DB_PASSWORD_DEV !== undefined ? process.env.DB_PASSWORD_DEV : 'netweb',
       jwtSecret: process.env.JWT_SECRET_DEV || 'secretkey'
     };
   }
