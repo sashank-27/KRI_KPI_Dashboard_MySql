@@ -212,6 +212,7 @@ export function DailyTaskModal({
                 type="date"
                 value={formatDateForInput(newTask.date)}
                 onChange={(e) => handleInputChange("date", e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
                 className={errors.date ? 'border-red-500' : ''}
               />
               <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />

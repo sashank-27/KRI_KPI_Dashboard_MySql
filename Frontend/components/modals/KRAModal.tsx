@@ -221,6 +221,7 @@ export function KRAModal({
                 type="date"
                 value={formatDateForInput(newKRA?.startDate || "")}
                 onChange={(e) => handleInputChange("startDate", e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
                 className={errors.startDate ? "border-red-500" : ""}
               />
               <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />

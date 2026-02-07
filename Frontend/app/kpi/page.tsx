@@ -556,6 +556,7 @@ export default function KPIDashboard() {
                     type="date"
                     value={dateFrom}
                     onChange={(e) => setDateFrom(e.target.value)}
+                    max={new Date().toISOString().split('T')[0]}
                   />
                 </div>
                 <div className="space-y-2">
@@ -564,6 +565,7 @@ export default function KPIDashboard() {
                     type="date"
                     value={dateTo}
                     onChange={(e) => setDateTo(e.target.value)}
+                    max={new Date().toISOString().split('T')[0]}
                   />
                 </div>
               </>
