@@ -322,6 +322,7 @@ const createDailyTask = async (req, res) => {
     const taskData = {
       task,
       srId: srId ? srId.toUpperCase().trim() : null, // Normalize SR-ID to uppercase
+      clientDetails,
       remarks,
       status,
       date: date ? new Date(date) : new Date(),
@@ -386,23 +387,6 @@ const updateDailyTask = async (req, res) => {
     const currentUser = await User.findByPk(req.user.id);
     if (!currentUser) {
       return res.status(400).json({ error: "User not found" });
-    }
-
-    // Date validation for non-admin users (only if date is being updated)
-    if (updateData.date && currentUser.role !== 'admin' && currentUser.role !== 'superadmin') {
-      const taskDate = new Date(updateData.date);
-      const today = new Date();
-      
-      // Reset time to midnight for comparison
-      taskDate.setHours(0, 0, 0, 0);
-      today.setHours(0, 0, 0, 0);
-      
-      if (taskDate.getTime() !== today.getTime()) {
-        return res.status(403).json({ 
-          error: "Permission denied", 
-          message: "Regular users can only update tasks to today's date. Please contact an admin to modify past or future dates." 
-        });
-      }
     }
 
     const [updatedCount] = await DailyTask.update(updateData, {
