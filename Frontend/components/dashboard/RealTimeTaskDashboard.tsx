@@ -105,6 +105,7 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
   const [newTask, setNewTask] = useState<NewDailyTask>({
     task: "",
     srId: "",
+    clientDetails: "",
     remarks: "",
     status: "in-progress",
     date: new Date().toISOString().split('T')[0],
@@ -542,6 +543,7 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
         setNewTask({
           task: "",
           srId: "",
+          clientDetails: "",
           remarks: "",
           status: "in-progress",
           date: new Date().toISOString().split('T')[0],
@@ -1399,6 +1401,7 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
           newTask={{
             task: editingTask.task,
             srId: editingTask.srId,
+            clientDetails: editingTask.clientDetails,
             remarks: editingTask.remarks,
             status: editingTask.status,
             date: editingTask.date.split('T')[0],

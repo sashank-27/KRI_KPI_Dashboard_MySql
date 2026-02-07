@@ -158,6 +158,18 @@ export function TaskViewModal({
               </div>
             )}
 
+            {task.clientDetails && (
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-gray-600" />
+                  <h3 className="text-sm font-semibold text-gray-700">Client Details</h3>
+                </div>
+                <div className="bg-gray-50 rounded-md p-2 border border-gray-100">
+                  <p className="text-sm text-gray-700">{task.clientDetails}</p>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-gray-600" />

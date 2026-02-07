@@ -61,6 +61,7 @@ export interface DailyTask {
   id: string;
   task: string;
   srId?: string;
+  clientDetails?: string;
   remarks: string;
   status: "in-progress" | "closed";
   date: string;
@@ -96,6 +97,7 @@ export interface DailyTask {
 export interface NewDailyTask {
   task: string;
   srId?: string;
+  clientDetails?: string;
   remarks: string;
   status: "in-progress" | "closed";
   date: string;

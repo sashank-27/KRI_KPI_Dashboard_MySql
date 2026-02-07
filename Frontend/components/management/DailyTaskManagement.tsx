@@ -69,6 +69,7 @@ export function DailyTaskManagement({ departments, users }: DailyTaskManagementP
   const [newTask, setNewTask] = useState<NewDailyTask>({
     task: "",
     srId: "",
+    clientDetails: "",
     remarks: "",
     status: "in-progress",
     date: new Date().toISOString().split('T')[0],
@@ -245,6 +246,7 @@ export function DailyTaskManagement({ departments, users }: DailyTaskManagementP
         setNewTask({
           task: "",
           srId: "",
+          clientDetails: "",
           remarks: "",
           status: "in-progress",
           date: new Date().toISOString().split('T')[0],
@@ -805,6 +807,7 @@ export function DailyTaskManagement({ departments, users }: DailyTaskManagementP
           newTask={{
             task: editingTask.task,
             srId: editingTask.srId,
+            clientDetails: editingTask.clientDetails,
             remarks: editingTask.remarks,
             status: editingTask.status,
             date: editingTask.date.split('T')[0],

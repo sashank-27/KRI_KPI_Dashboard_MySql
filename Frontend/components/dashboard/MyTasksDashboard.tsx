@@ -104,6 +104,7 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
   const [newTask, setNewTask] = useState<NewDailyTask>({
     task: "",
     srId: "",
+    clientDetails: "",
     remarks: "",
     status: "in-progress",
     date: new Date().toISOString().split('T')[0],
@@ -412,6 +413,7 @@ export function MyTasksDashboard({ currentUserId, departments, users }: MyTasksD
         setNewTask({
           task: "",
           srId: "",
+          clientDetails: "",
           remarks: "",
           status: "in-progress",
           date: new Date().toISOString().split('T')[0],

@@ -61,7 +61,8 @@ const getAllDailyTasks = async (req, res) => {
       whereClause[Op.or] = [
         { task: { [Op.like]: `%${search}%` } },
         { remarks: { [Op.like]: `%${search}%` } },
-        { srId: { [Op.like]: `%${search}%` } }
+        { srId: { [Op.like]: `%${search}%` } },
+        { clientDetails: { [Op.like]: `%${search}%` } }
       ];
     }
     
@@ -267,6 +268,7 @@ const createDailyTask = async (req, res) => {
     const {
       task,
       srId,
+      clientDetails,
       remarks,
       status = "in-progress",
       date,

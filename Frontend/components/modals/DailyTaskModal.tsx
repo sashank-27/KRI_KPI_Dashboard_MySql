@@ -163,6 +163,26 @@ export function DailyTaskModal({
             )}
           </div>
 
+          {/* Client Details */}
+          <div className="space-y-2">
+            <Label htmlFor="clientDetails" className="text-sm font-medium">
+              Client Details
+            </Label>
+            <Input
+              id="clientDetails"
+              placeholder="Enter client details"
+              value={newTask.clientDetails || ""}
+              onChange={(e) => handleInputChange("clientDetails", e.target.value)}
+              className={errors.clientDetails ? "border-red-500" : ""}
+            />
+            {errors.clientDetails && (
+              <p className="text-sm text-red-500 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                {errors.clientDetails}
+              </p>
+            )}
+          </div>
+
           {/* Remarks */}
           <div className="space-y-2">
             <Label htmlFor="remarks" className="text-sm font-medium">

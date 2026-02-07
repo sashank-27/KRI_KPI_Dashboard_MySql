@@ -18,6 +18,10 @@ const DailyTask = sequelize.define('DailyTask', {
     type: DataTypes.STRING(100),
     allowNull: true,
   },
+  clientDetails: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
   remarks: {
     type: DataTypes.TEXT,
     allowNull: false,
