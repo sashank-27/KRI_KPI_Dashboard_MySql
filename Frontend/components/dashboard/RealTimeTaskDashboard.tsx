@@ -6,7 +6,6 @@ import {
   ClipboardList,
   Plus,
   MoreHorizontal,
-  PanelLeft,
   ArrowUpDown,
   Edit,
   Trash2,
@@ -954,31 +953,6 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
                   />
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
-                  <SelectTrigger className="w-40 transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-md">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="in-progress">In Progress</SelectItem>
-                    <SelectItem value="closed">Closed</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={departmentFilter} onValueChange={handleDepartmentFilterChange}>
-                  <SelectTrigger className="w-48 transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-md">
-                    <SelectValue placeholder="Department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Departments</SelectItem>
-                    {departments.map((dept) => (
-                      <SelectItem key={dept.id} value={dept.id}>
-                        {dept.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
           </div>
 
@@ -1004,34 +978,6 @@ export function RealTimeTaskDashboard({ departments, users }: RealTimeTaskDashbo
                       </Button>
                     </div>
                   )}
-                </div>
-                <div className="flex gap-2 items-center">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">Show:</span>
-                    <Select value={itemsPerPage.toString()} onValueChange={(value) => {
-                      setItemsPerPage(parseInt(value));
-                      setCurrentPage(1);
-                      fetchTasks(1, parseInt(value), true);
-                    }}>
-                      <SelectTrigger className="w-20 h-8 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="5">5</SelectItem>
-                        <SelectItem value="10">10</SelectItem>
-                        <SelectItem value="20">20</SelectItem>
-                        <SelectItem value="50">50</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button variant="outline" size="sm" className="rounded-2xl transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-md">
-                    <PanelLeft className="mr-2 h-4 w-4" />
-                    Filter
-                  </Button>
-                  <Button variant="outline" size="sm" className="rounded-2xl transition-all duration-200 ease-in-out hover:scale-105 hover:shadow-md">
-                    <ArrowUpDown className="mr-2 h-4 w-4" />
-                    Sort
-                  </Button>
                 </div>
               </div>
             </div>

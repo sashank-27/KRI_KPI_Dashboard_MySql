@@ -17,6 +17,7 @@ import {
   ArrowUpRight,
   Filter,
   RefreshCw,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -89,6 +90,8 @@ export default function KPIDashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [userKpiData, setUserKpiData] = useState<UserKPIData | null>(null);
   const [filterType, setFilterType] = useState<"year" | "month" | "custom">("year");
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
 
   // Socket.IO for real-time updates
   const { socket, isConnected } = useSocket();
@@ -97,6 +100,19 @@ export default function KPIDashboard() {
   useEffect(() => {
     fetchUsers();
     fetchDepartments();
+  }, []);
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('#search') && !target.closest('.suggestion-dropdown')) {
+        setShowSuggestions(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // Fetch KPI data when filters change
@@ -370,9 +386,81 @@ export default function KPIDashboard() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2 relative">
+              <Label htmlFor="search">Search User</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  id="search"
+                  type="text"
+                  placeholder="Type user name to search..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  className="w-full pl-10"
+                />
+                {showSuggestions && searchTerm && (
+                  <div className="suggestion-dropdown absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                    {/* Show "All Users" option if search matches */}
+                    {"all users".includes(searchTerm.toLowerCase()) && (
+                      <div
+                        className="px-4 py-2 hover:bg-blue-50 cursor-pointer transition-colors border-b"
+                        onClick={() => {
+                          setSelectedUser("all");
+                          setSearchTerm("");
+                          setShowSuggestions(false);
+                        }}
+                      >
+                        <div className="font-medium text-sm text-blue-600">All Users</div>
+                        <div className="text-xs text-gray-500">View all users KPI data</div>
+                      </div>
+                    )}
+                    {users
+                      .filter((user) =>
+                        user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+                      )
+                      .slice(0, 10)
+                      .map((user) => (
+                        <div
+                          key={user.id}
+                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer transition-colors"
+                          onClick={() => {
+                            setSelectedUser(user.id);
+                            setSearchTerm(user.name || "");
+                            setShowSuggestions(false);
+                          }}
+                        >
+                          <div className="font-medium text-sm">{user.name}</div>
+                          <div className="text-xs text-gray-500">{user.email}</div>
+                        </div>
+                      ))}
+                    {users.filter((user) =>
+                      user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+                    ).length === 0 && !"all users".includes(searchTerm.toLowerCase()) && (
+                      <div className="px-4 py-2 text-sm text-gray-500">
+                        No users found
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="user">Select User</Label>
-              <Select value={selectedUser} onValueChange={setSelectedUser}>
+              <Select value={selectedUser} onValueChange={(value) => {
+                setSelectedUser(value);
+                if (value === "all") {
+                  setSearchTerm("");
+                } else {
+                  const user = users.find(u => u.id === value);
+                  if (user) setSearchTerm(user.name || "");
+                }
+              }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select user" />
                 </SelectTrigger>
