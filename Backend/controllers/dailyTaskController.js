@@ -292,23 +292,6 @@ const createDailyTask = async (req, res) => {
       return res.status(400).json({ error: "User not found" });
     }
 
-    // Date validation for non-admin users
-    if (currentUser.role !== 'admin' && currentUser.role !== 'superadmin') {
-      const taskDate = date ? new Date(date) : new Date();
-      const today = new Date();
-      
-      // Reset time to midnight for comparison
-      taskDate.setHours(0, 0, 0, 0);
-      today.setHours(0, 0, 0, 0);
-      
-      if (taskDate.getTime() !== today.getTime()) {
-        return res.status(403).json({ 
-          error: "Permission denied", 
-          message: "Regular users can only add tasks for today's date. Please contact an admin to modify past or future dates." 
-        });
-      }
-    }
-
     // Use the current user's department ID
     let departmentId = currentUser.departmentId;
     

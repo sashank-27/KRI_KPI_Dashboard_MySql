@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X, Calendar, AlertCircle, ClipboardList, Lock } from "lucide-react";
+import { useState } from "react";
+import { X, Calendar, AlertCircle, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,9 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { NewDailyTask } from "@/lib/types";
-import { getCurrentUser, isAdmin } from "@/lib/auth";
 
 interface DailyTaskModalProps {
   isOpen: boolean;
@@ -41,15 +39,6 @@ export function DailyTaskModal({
   isEdit = false,
 }: DailyTaskModalProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [userIsAdmin, setUserIsAdmin] = useState(false);
-
-  // Check if the user is admin on component mount
-  useEffect(() => {
-    const checkAdminStatus = () => {
-      setUserIsAdmin(isAdmin());
-    };
-    checkAdminStatus();
-  }, [isOpen]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -60,20 +49,6 @@ export function DailyTaskModal({
 
     if (!newTask.remarks.trim()) {
       newErrors.remarks = "Remarks are required";
-    }
-
-    // Date validation for non-admin users
-    if (!userIsAdmin) {
-      const selectedDate = new Date(newTask.date);
-      const today = new Date();
-      
-      // Reset time to midnight for comparison
-      selectedDate.setHours(0, 0, 0, 0);
-      today.setHours(0, 0, 0, 0);
-      
-      if (selectedDate.getTime() !== today.getTime()) {
-        newErrors.date = "You can only add tasks for today's date. Only admins can modify dates.";
-      }
     }
 
     setErrors(newErrors);
@@ -101,12 +76,6 @@ export function DailyTaskModal({
     if (!dateString) return "";
     const date = new Date(dateString);
     return date.toISOString().split('T')[0];
-  };
-
-  // Get today's date in YYYY-MM-DD format
-  const getTodayDate = () => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
   };
 
   return (
@@ -234,35 +203,18 @@ export function DailyTaskModal({
 
           {/* Date */}
           <div className="space-y-2">
-            <Label htmlFor="date" className="text-sm font-medium flex items-center gap-2">
+            <Label htmlFor="date" className="text-sm font-medium">
               Date
-              {!userIsAdmin && (
-                <span className="flex items-center gap-1 text-xs text-amber-600">
-                  <Lock className="h-3 w-3" />
-                  Today only
-                </span>
-              )}
             </Label>
-            {!userIsAdmin && (
-              <Alert className="bg-amber-50 border-amber-200 py-2">
-                <AlertCircle className="h-4 w-4 text-amber-600" />
-                <AlertDescription className="text-xs text-amber-800">
-                  Regular users can only add tasks for today's date. Contact an admin to modify past or future dates.
-                </AlertDescription>
-              </Alert>
-            )}
             <div className="relative">
               <Input
                 id="date"
                 type="date"
                 value={formatDateForInput(newTask.date)}
                 onChange={(e) => handleInputChange("date", e.target.value)}
-                disabled={!userIsAdmin}
-                min={userIsAdmin ? undefined : getTodayDate()}
-                max={userIsAdmin ? undefined : getTodayDate()}
-                className={`${!userIsAdmin ? 'bg-gray-50 cursor-not-allowed' : ''} ${errors.date ? 'border-red-500' : ''}`}
+                className={errors.date ? 'border-red-500' : ''}
               />
-              <Calendar className={`absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 ${!userIsAdmin ? 'text-gray-400' : 'text-gray-400'} pointer-events-none`} />
+              <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
             </div>
             {errors.date && (
               <p className="text-sm text-red-500 flex items-center gap-1">

@@ -146,29 +146,25 @@ export function TaskViewModal({
               </div>
             </div>
 
-            {task.srId && (
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <Tag className="h-4 w-4 text-gray-600" />
-                  <h3 className="text-sm font-semibold text-gray-700">SR-ID</h3>
-                </div>
-                <div className="bg-gray-50 rounded-md p-2 border border-gray-100">
-                  <p className="text-sm font-mono text-gray-700">{task.srId}</p>
-                </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Tag className="h-4 w-4 text-gray-600" />
+                <h3 className="text-sm font-semibold text-gray-700">SR-ID</h3>
               </div>
-            )}
+              <div className="bg-gray-50 rounded-md p-2 border border-gray-100">
+                <p className="text-sm font-mono text-gray-700">{task.srId || 'N/A'}</p>
+              </div>
+            </div>
 
-            {task.clientDetails && (
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-gray-600" />
-                  <h3 className="text-sm font-semibold text-gray-700">Client Details</h3>
-                </div>
-                <div className="bg-gray-50 rounded-md p-2 border border-gray-100">
-                  <p className="text-sm text-gray-700">{task.clientDetails}</p>
-                </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-gray-600" />
+                <h3 className="text-sm font-semibold text-gray-700">Client Details</h3>
               </div>
-            )}
+              <div className="bg-gray-50 rounded-md p-2 border border-gray-100">
+                <p className="text-sm text-gray-700">{task.clientDetails || 'N/A'}</p>
+              </div>
+            </div>
 
             <div className="space-y-1">
               <div className="flex items-center gap-2">
